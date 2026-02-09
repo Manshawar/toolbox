@@ -13,8 +13,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "hono": "^4.6.0",
-    "@hono/node-server": "^1.13.0"
+    "@hono/node-server": "^1.13.0",
+    "hono": "^4.6.0"
   },
   "packageManager": "pnpm@10.26.2",
   "devDependencies": {

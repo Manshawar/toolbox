@@ -31,5 +31,5 @@ export default defineConfig({
   platform: 'node',
   treeshake: true,
   noExternal: [],
-  onSuccess: pkgToBinaries,
+  onSuccess: async () => await pkgToBinaries(),
 })

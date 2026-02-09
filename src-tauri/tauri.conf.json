@@ -11,16 +11,20 @@
   },
   "app": {
     "macOSPrivateApi": true,
+    "withGlobalTauri": true,
     "windows": [
       {
         "title": "langchainapp",
         "width": 1100,
         "height": 720,
         "transparent": true,
-        "shadow": false
+        "shadow": false,
+        "decorations": false
       }
     ],
-    "security": { "csp": null }
+    "security": {
+      "csp": null
+    }
   },
   "bundle": {
     "active": true,
@@ -32,6 +36,8 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/langchain-serve"]
+    "externalBin": [
+      "binaries/langchain-serve"
+    ]
   }
 }
