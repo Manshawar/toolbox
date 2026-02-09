@@ -9,19 +9,13 @@ const router = createRouter({
       children: [
         {
           path: "",
-          redirect: "/toolbox",
+          redirect: "/commit",
         },
         {
-          path: "toolbox",
-          name: "Toolbox",
+          path: "commit",
+          name: "CommitTool",
           component: () => import("@/views/Toolbox.vue"),
-          meta: { title: "工具箱" },
-        },
-        {
-          path: "settings",
-          name: "Settings",
-          component: () => import("@/views/Settings.vue"),
-          meta: { title: "设置" },
+          meta: { title: "commit工具" },
         },
       ],
     },

@@ -11,7 +11,7 @@ export interface AppConfig {
 }
 
 const defaultAppConfig: AppConfig = {
-  title: 'Langchain App',
+  title: 'Toolbox',
   collapseMenu: false,
   themeMode: 'light',
   hideNavbart: false,

@@ -1,0 +1,43 @@
+---
+description: 优先使用组件库（Element Plus）与项目技术栈约定，参考 README
+globs: src/**/*.vue
+alwaysApply: true
+---
+
+# 组件与技术栈约定
+
+本规则与项目根目录 **README.md** 中的技术栈保持一致，做 UI 与前端实现时请遵循以下优先级。
+
+## 1. 优先使用组件库
+
+- **组件库**：使用 [Element Plus](https://element-plus.org/) 提供界面组件。
+- 做按钮、输入框、选择框、表单、布局、弹窗、菜单、表格等时，**优先选用 Element Plus 的组件**（如 `el-button`、`el-input`、`el-select`、`el-dialog`、`el-form`、`el-menu` 等），再配合 Tailwind 做布局与微调。
+- 仅在 Element Plus 无合适组件或需极简定制时，再用原生元素 + Tailwind 补充。
+
+**示例**：
+- 按钮 → `<el-button>`，类型用 `type="primary"`、`plain`、`text` 等。
+- 输入框 / 密码框 → `<el-input>`、`<el-input type="password">`。
+- 下拉选择 → `<el-select>` + `<el-option>`。
+- 弹窗 / 抽屉 → `<el-dialog>`、`<el-drawer>`。
+- 表单 → `<el-form>`、`<el-form-item>`。
+- 菜单 / 导航 → `<el-menu>`、`el-menu-item` 等。
+
+## 2. 样式与图标
+
+- **样式**：Tailwind CSS 4 做布局与工具类，Element Plus 自带主题；需覆盖时用 Tailwind 或 Element Plus 变量。
+- **图标**：可使用 **Element Plus Icons**（`@element-plus/icons-vue`）或项目内已有的 **Heroicons**（`@heroicons/vue`）。新增功能时优先在已有库中选择，保持统一。
+
+## 3. 技术栈速查（与 README 一致）
+
+| 类别     | 技术 |
+| -------- | ---- |
+| 前端框架 | Vue 3、Vue Router |
+| 状态     | Pinia（含 pinia-plugin-persistedstate） |
+| 样式     | Tailwind CSS 4 |
+| 组件库   | Element Plus |
+| 桌面壳   | Tauri 2 |
+
+## 4. 使用前确认
+
+- 新增或修改 Vue 页面/组件时，先判断是否有 Element Plus 组件可直接使用或组合使用。
+- 若 README 后续更新技术栈（如更换组件库或图标库），以 README 为准并相应调整实现方式。

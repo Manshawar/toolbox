@@ -10,7 +10,7 @@
 | 构建工具 | Vite 6、TypeScript                                                                           |
 | 桌面壳   | Tauri 2（@tauri-apps/api、plugin-opener、plugin-shell）                                      |
 | 样式     | Tailwind CSS 4、PostCSS、Autoprefixer                                                        |
-| 组件库   | [Naive UI](https://www.naiveui.com/)                                                            |
+| 组件库   | [Element Plus](https://element-plus.org/)                                                            |
 | 图标     | [xicons](https://github.com/07akioni/xicons)（Vue3 使用 `@vicons/*`，配合 `@vicons/utils`） |
 | 侧载服务 | `langchain-serve`（Hono、tsup）                                                            |
 | monorepo | pnpm workspace、Turbo                                                                        |
@@ -23,7 +23,7 @@ https://heroicons.com/
 
 ### 组件库说明
 
-- **Naive UI**：Vue 3 组件库，用于界面组件（按钮、输入框、布局等）。
+- **Element Plus**：Vue 3 组件库，用于界面组件（按钮、输入框、表单、弹窗、菜单等），与 Tailwind 配合使用。
 
 ---
 

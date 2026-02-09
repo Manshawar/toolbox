@@ -1,22 +1,17 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { ArrowsPointingOutIcon } from '@heroicons/vue/24/outline';
+import { Cog6ToothIcon } from '@heroicons/vue/24/outline';
+import SettingsDialog from '@/components/SettingsDialog/index.vue';
 import { useAppStoreHook } from '@/store/modules/app';
 
 const appStore = useAppStoreHook();
 const route = useRoute();
 
 const show = computed(() => !appStore.appConfig.hideNavbart);
-const title = computed(() => (route.meta?.title as string) ?? 'Langchain App');
+const title = computed(() => (route.meta?.title as string) ?? 'toolbox');
 
-function toggleFullscreen() {
-  if (document.fullscreenElement) {
-    document.exitFullscreen();
-  } else {
-    document.documentElement.requestFullscreen();
-  }
-}
+const dialogOpen = ref(false);
 </script>
 
 <template>
@@ -27,13 +22,10 @@ function toggleFullscreen() {
     <h1 class="text-lg font-medium text-gray-800 truncate">
       {{ title }}
     </h1>
-    <button
-      type="button"
-      class="p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-      title="全屏"
-      @click="toggleFullscreen"
-    >
-      <ArrowsPointingOutIcon class="w-5 h-5" />
-    </button>
+    <el-button type="primary" link circle title="设置" @click="dialogOpen = true">
+      <Cog6ToothIcon class="w-5 h-5" />
+    </el-button>
   </header>
+
+  <SettingsDialog v-model="dialogOpen" />
 </template>
