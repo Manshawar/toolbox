@@ -1,0 +1,39 @@
+{
+  "name": "langchainapp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "build:sidecar": "pnpm --filter sidecar-app build",
+    "build:app": "turbo run build && pnpm tauri build"
+  },
+  "dependencies": {
+    "@heroicons/vue": "^2.2.0",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-shell": "~2.3.5",
+    "pinia": "^3.0.4",
+    "pinia-plugin-persistedstate": "^4.4.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "autoprefixer": "^10.4.24",
+    "naive-ui": "^2.43.2",
+    "postcss": "^8.5.6",
+    "sidecar-app": "workspace:*",
+    "tailwindcss": "^4.1.18",
+    "turbo": "^2.3.0",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3",
+    "vite-plugin-vue-devtools": "^8.0.6",
+    "vue-tsc": "^2.1.10"
+  }
+}
