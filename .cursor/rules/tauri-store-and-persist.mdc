@@ -1,0 +1,42 @@
+---
+description: Tauri Store 封装、Pinia 持久化与设置页写法约定
+globs: src/store/**/*.ts, src/utils/tauri-store.ts, src/components/SettingsDialog/**/*.vue, src/plugins/tauri-store-init.ts, src/main.ts
+alwaysApply: false
+---
+
+# Tauri Store 与持久化状态约定
+
+以下为项目内已采用的写法，新增或修改相关代码时请保持一致。
+
+## 1. Tauri Store 封装（不关心实现）
+
+- **统一入口**：所有对 Tauri 持久化的读写都通过 `@/utils/tauri-store`，不直接使用 `@tauri-apps/plugin-store`。
+- **API**：
+  - `read<T>(path, key)`：读单个 key，返回 `T | null`，非 Tauri 或出错返回 null。
+  - `write(path, key, value)`：写单个 key 并落盘，value 需 JSON 可序列化。
+  - `update<T>(path, key, updater)`：先读再算再写，`updater(current) => next`，适合局部更新。
+- 调用方无需判断是否 Tauri、无需 try/catch，封装内已处理。
+
+## 2. 持久化状态放 Pinia，存取用 Tauri Store
+
+- 需要持久化的状态放在 **Pinia** 里（内存、响应式、全应用可读）。
+- **存**：通过 tauri-store 的 `write` 或 `update` 写回磁盘；建议**存一个 JSON 对象**（一个 key 对应一整份配置），读写方便，避免多个 `store.set`。
+- **取**：应用启动时（如 Vue 插件里）从 tauri-store `read` 一次，合并到 Pinia state；后续业务只读 Pinia。
+
+## 3. 设置页保存：用事件触发，不用 watch + 定时器
+
+- 表单项保存用 **事件** 触发即可：下拉用 `@change`，输入框用 `@blur`，调用 store 的 `saveToTauriStore()`（或等价方法）。
+- 不推荐在设置页用 `watch` + `setTimeout` 防抖保存；事件语义更清晰，也避免每次输入都触发保存逻辑。
+
+## 4. 挂载前初始化：Vue 插件 + Promise
+
+- 需要在 **挂载前** 完成的 Tauri 相关初始化（如从 Store 恢复到 Pinia），做成 **Vue 插件**，在插件 `install` 里启动异步逻辑，并暴露一个 **Promise**（如 `whenTauriStoreReady()`）。
+- 在 `main.ts` 里：`createApp` → `use(store)` → `use(…其他)` → `use(tauriStoreInitPlugin)` → **`await whenTauriStoreReady()`** → `app.mount('#app')`，保证首屏拿到的已是恢复后的状态。
+
+## 5. 能用 update 时用 update；善用 lodash
+
+- 存盘时若逻辑是「先读再算再写」，优先用 tauri-store 的 **`update`**，避免手写 read + 合并 + write。
+- 在 store 里做「从 raw 归一化到 state」「从 state 取部分字段写回」时，可用 **lodash** 简化：
+  - 字段列表用常量（如 `API_SETTINGS_KEYS`），用 `pick(raw, keys)` / `pick(this, keys)` 取子集，避免重复列举 key。
+  - 合并默认值与持久化 patch 用 `merge({}, defaultState, patch)`，再 `Object.assign(this, …)` 写回 store state。
+  - 合法枚举用数组（如 `VALID_PROVIDERS`）配合 `includes` 做校验，便于扩展。

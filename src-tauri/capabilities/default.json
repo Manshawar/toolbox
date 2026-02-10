@@ -13,15 +13,20 @@
     "core:window:allow-toggle-maximize",
     "opener:default",
     "shell:default",
-   {
-    "identifier": "shell:allow-execute",
-    "allow": [
-      {
-        "args": true,
-        "name": "binaries/langchain-serve",
-        "sidecar": true
-      }
-    ]
-  }
+    "store:allow-get",
+    "store:allow-set",
+    "store:allow-save",
+    "store:allow-load",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "args": true,
+          "name": "binaries/langchain-serve",
+          "sidecar": true
+        }
+      ]
+    },
+    "store:default"
   ]
 }

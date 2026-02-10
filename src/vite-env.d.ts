@@ -15,4 +15,3 @@ declare module "pinia-plugin-persistedstate" {
   const plugin: (context: PiniaPluginContext) => void;
   export default plugin;
 }
-
