@@ -12,13 +12,13 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // @yao-pkg/pkg 的 target 格式: node<version>-<os>-<arch>
-// 注意：@yao-pkg/pkg 支持 Node 18, 20, 22 等版本，建议根据你的需求选择
+// 与本地开发 Node 版本一致，使用 Node 24
 const TARGET_MAP: Record<string, string> = {
-  "aarch64-apple-darwin": "node20-macos-arm64", // 升级到 Node 20
-  "x86_64-apple-darwin": "node20-macos-x64",
-  "x86_64-pc-windows-msvc": "node20-win-x64",
-  "x86_64-unknown-linux-gnu": "node20-linux-x64",
-  "aarch64-unknown-linux-gnu": "node20-linux-arm64", // 新增 Linux ARM64 支持
+  "aarch64-apple-darwin": "node24-macos-arm64",
+  "x86_64-apple-darwin": "node24-macos-x64",
+  "x86_64-pc-windows-msvc": "node24-win-x64",
+  "x86_64-unknown-linux-gnu": "node24-linux-x64",
+  "aarch64-unknown-linux-gnu": "node24-linux-arm64",
 };
 
 /** 使用 @yao-pkg/pkg 将 bundle 打成单文件二进制 */
@@ -101,7 +101,7 @@ export default defineConfig({
   clean: true,
   bundle: true,
   platform: "node",
-  target: "node20", // 与 pkg target 保持一致
+  target: "node24", // 与 pkg target 保持一致
   treeshake: true,
   external: ["node-pty"], // node-pty 是原生模块，需要 external
   noExternal: ["langchain-serve", "pty-host"],
