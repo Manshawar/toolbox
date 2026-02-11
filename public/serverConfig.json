@@ -1,6 +1,6 @@
 {
   "title": "toolBox",
-  "collapseMenu": false,
+  "collapseMenu": true,
   "sidebarMode": "vertical",
   "themeMode": "dark",
   "locale": "zh-CN",

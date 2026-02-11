@@ -1,9 +1,9 @@
-import type { ServerOptions } from 'vite';
+import type { ServerOptions } from "vite";
 
 export function createViteServer(): ServerOptions {
-  const port = 5173;
+  const port = 1420;
   const viteServer: ServerOptions = {
-    host: '127.0.0.1',
+    host: "127.0.0.1",
     port,
     // 显式指定 origin，避免依赖重载时 resolveServerUrls 解析到 protocol 为 null 报错
     origin: `http://127.0.0.1:${port}`,
@@ -17,10 +17,10 @@ export function createViteServer(): ServerOptions {
     // force: false,
     // 自定义代理规则
     proxy: {
-      '/api': {
-        target: '',
+      "/api": {
+        target: "",
         changeOrigin: true,
-        rewrite: path => path.replace(/^\/api/, ''),
+        rewrite: (path) => path.replace(/^\/api/, ""),
       },
     },
   };

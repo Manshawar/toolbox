@@ -50,14 +50,14 @@
     });
   };
 
-  const fullScreenChange = () => {
-    const { hideNavbart, hideSidebar } = appConfig.value;
-    if (hideNavbart && hideSidebar) {
-      setAppConfigMode({ hideNavbart: false, hideSidebar: false });
-    } else {
-      setAppConfigMode({ hideNavbart: true, hideSidebar: true });
-    }
-  };
+  // const fullScreenChange = () => {
+  //   const { hideNavbart, hideSidebar } = appConfig.value;
+  //   if (hideNavbart && hideSidebar) {
+  //     setAppConfigMode({ hideNavbart: false, hideSidebar: false });
+  //   } else {
+  //     setAppConfigMode({ hideNavbart: true, hideSidebar: true });
+  //   }
+  // };
 
   const elDropdownRef = useTemplateRef<InstanceType<typeof ElDropdown>>('el-dropdown-ref');
 
@@ -154,9 +154,9 @@
             </template>
           </ElDropdown>
         </li>
-        <li class="cursor" @click="fullScreenChange">
+        <!-- <li class="cursor" @click="fullScreenChange">
           <SvgIcon name="full_screen_page" />
-        </li>
+        </li> -->
       </ul>
     </div>
   </div>
