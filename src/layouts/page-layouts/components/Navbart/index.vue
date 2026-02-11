@@ -13,19 +13,6 @@
   const drawer = ref(false);
 
   const { appConfig } = useRootSetting();
-
-  const full_screen = ref<'full_screen' | 'full_screen_close'>('full_screen');
-
-  const fullScreenChange = () => {
-    // https://developer.mozilla.org/zh-CN/docs/Web/API/Document/exitFullscreen
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-      full_screen.value = 'full_screen';
-    } else {
-      full_screen.value = 'full_screen_close';
-      document.documentElement.requestFullscreen();
-    }
-  };
 </script>
 
 <template>
@@ -42,17 +29,16 @@
         </template>
       </div>
       <div class="navbar-right">
-        <el-tooltip :content="$t('layout.navbar.fullScreen')" placement="bottom">
-          <SvgIcon class="cursor" :name="full_screen" @click="fullScreenChange" />
-        </el-tooltip>
         <AppLocale class="icon" />
         <AppTheme />
         <AppAccount />
-        <SvgIcon class="cursor" name="iEL-setting" @click="drawer = true" />
+        <el-tooltip content="主题 / 外观" placement="bottom">
+          <SvgIcon class="cursor" name="iEL-brush" @click="drawer = true" />
+        </el-tooltip>
       </div>
     </div>
     <div v-show="appConfig.hideNavbart" class="setting-icon cursor">
-      <SvgIcon name="iEL-setting" @click="drawer = true" />
+      <SvgIcon name="iEL-brush" @click="drawer = true" />
     </div>
     <Setting v-model:model-value="drawer" />
   </div>

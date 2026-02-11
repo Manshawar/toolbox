@@ -20,8 +20,6 @@ import { configAutoElementStylePlugin } from "./element";
 import { configVueI18nPlugin } from "./i18n";
 // 图片压缩
 import { configImageminPlugin } from "./imagemin";
-// pwd
-import { configPwaPlugin } from "./pwa";
 // 按需加载样式配置
 import { configStylePlugin } from "./style";
 // svg配置
@@ -50,8 +48,6 @@ export function createVitePlugins(_isBuild = false, configEnv: ConfigEnv) {
   vitePlugins.push(configSvgPlugin());
 
   vitePlugins.push(configCompressPlugin("gzip", true));
-
-  vitePlugins.push(configPwaPlugin());
 
   vitePlugins.push(configVisualizerPlugin());
 

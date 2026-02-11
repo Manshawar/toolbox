@@ -1,8 +1,8 @@
-import { isFunction } from 'lodash-es';
-import axios from 'axios';
-import { cloneDeep } from 'lodash-es';
-import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import type { CreateAxiosOptions } from './axiosConfig';
+import { isFunction } from "lodash-es";
+import axios from "axios";
+import { cloneDeep } from "lodash-es";
+import type { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import type { CreateAxiosOptions } from "./axiosConfig";
 
 /**
  * @description: axios 模块
@@ -50,8 +50,12 @@ export class IAxios {
     if (!interceptor) {
       return;
     }
-    const { requestInterceptors, requestInterceptorsCatch, responseInterceptors, responseInterceptorsCatch } =
-      interceptor;
+    const {
+      requestInterceptors,
+      requestInterceptorsCatch,
+      responseInterceptors,
+      responseInterceptorsCatch,
+    } = interceptor;
 
     // 此方法为了过滤不挂载interceptor没配置的拦截器
 
@@ -79,42 +83,42 @@ export class IAxios {
   /**
    * @description get请求（config：axios请求配置, options：数据的特殊处理）
    */
-  get<T = any, P = any>(config: AxiosRequestConfig<P>, options?: RequestOptions): Promise<Result<T>> {
-    return this.request<T, P>({ ...config, method: 'GET' }, options);
+  get<T = any, P = any>(config: AxiosRequestConfig<P>, options?: any): Promise<any> {
+    return this.request<T, P>({ ...config, method: "GET" }, options);
   }
 
   /**
    * @description post请求（config：axios请求配置, options：数据的特殊处理）
    */
-  post<T = any, P = any>(config: AxiosRequestConfig<P>, options?: RequestOptions): Promise<Result<T>> {
-    return this.request<T, P>({ ...config, method: 'POST' }, options);
+  post<T = any, P = any>(config: AxiosRequestConfig<P>, options?: any): Promise<any> {
+    return this.request<T, P>({ ...config, method: "POST" }, options);
   }
 
   /**
    * @description put请求（config：axios请求配置, options：数据的特殊处理）
    */
-  put<T = any, P = any>(config: AxiosRequestConfig<P>, options?: RequestOptions): Promise<Result<T>> {
-    return this.request<T, P>({ ...config, method: 'PUT' }, options);
+  put<T = any, P = any>(config: AxiosRequestConfig<P>, options?: any): Promise<any> {
+    return this.request<T, P>({ ...config, method: "PUT" }, options);
   }
 
   /**
    * @description delete请求（config：axios请求配置, options：数据的特殊处理）
    */
-  delete<T = any, P = any>(config: AxiosRequestConfig<P>, options?: RequestOptions): Promise<Result<T>> {
-    return this.request<T, P>({ ...config, method: 'DELETE' }, options);
+  delete<T = any, P = any>(config: AxiosRequestConfig<P>, options?: any): Promise<any> {
+    return this.request<T, P>({ ...config, method: "DELETE" }, options);
   }
 
   /**
    * @description 请求体
    */
-  request<T = any, P = any>(config: AxiosRequestConfig<P>, options?: RequestOptions): Promise<Result<T>> {
+  request<T = any, P = any>(config: AxiosRequestConfig<P>, options?: any): Promise<any> {
     let conf: CreateAxiosOptions = cloneDeep(config);
 
     const interceptor = this.getInterceptor();
 
     const { requestOptions } = this.options;
 
-    const opt: RequestOptions = Object.assign({}, requestOptions, options);
+    const opt: any = Object.assign({}, requestOptions, options);
 
     const { beforeRequestHook, requestCatchHook, requestHook } = interceptor || {};
     if (beforeRequestHook && isFunction(beforeRequestHook)) {
@@ -125,17 +129,17 @@ export class IAxios {
 
     return new Promise((resolve, reject) => {
       this.axiosInstance
-        .request<T, AxiosResponse<Result<T>, P>>(conf)
-        .then((res: AxiosResponse<Result<T>, P>) => {
+        .request<T, AxiosResponse<any, P>>(conf)
+        .then((res: AxiosResponse<any, P>) => {
           if (requestHook && isFunction(requestHook)) {
             try {
               resolve(requestHook(res, opt));
             } catch (err) {
-              reject(err || new Error('request error!'));
+              reject(err || new Error("request error!"));
             }
             return;
           }
-          resolve(res as unknown as Promise<Result<T>>);
+          resolve(res as unknown as Promise<any>);
         })
         .catch((e: Error | AxiosError) => {
           if (requestCatchHook && isFunction(requestCatchHook)) {

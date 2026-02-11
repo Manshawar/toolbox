@@ -2,24 +2,14 @@ import { isUrl } from '@/utils/url';
 import { useTimeoutFn } from '@vueuse/core';
 import { cloneDeep } from 'lodash-es';
 import type { RouteRecordName, RouteRecordNormalized, RouteRecordRaw } from 'vue-router';
-import { PermissionMode, type RoleEnum } from '@/enum/role';
-import { getRouteApi } from '@/server/route';
-import type { RouteDataItemType } from '@/server/route';
-import { useAppStoreHook } from '@/store/modules/app';
+import type { RoleEnum } from '@/enum/role';
 import { usePermissionStoreHook } from '@/store/modules/permission';
 import { router, sidebarRouteList } from './index';
 import type { AppRouteRecordRaw, Meta } from './type';
 
-// 获取路由列表
+// 获取路由列表（当前仅本地模式，不请求接口）
 async function getRouteList(permission: RoleEnum) {
-  const appStore = useAppStoreHook();
-  if (appStore.appConfigMode.permissionMode === PermissionMode.REAREND) {
-    // 后端路由控制
-    return await getAsyncRoute(permission);
-  } else {
-    // 角色路由控制
-    return await getStaticRoute(permission);
-  }
+  return getStaticRoute(permission);
 }
 
 // 初始化权限路由
@@ -41,19 +31,7 @@ export async function initRoute(permission: RoleEnum | null) {
   return routeList;
 }
 
-// 获取后端路由
-async function getAsyncRoute(permission: RoleEnum) {
-  const res = await getRouteApi({ name: permission });
-  if (res.data.length) {
-    // 根据接口返回的路由列表生成新的路由（此时的路由是带有层级关系）
-    return handleRouteList(sortRouteList(sidebarRouteList), res.data);
-  } else {
-    console.error('No requested route');
-    return [];
-  }
-}
-
-// 异步获取静态路由，防止切换权限时因列表缓存导致菜单无法正常刷新
+// 静态路由（本地模式，不请求接口）
 async function getStaticRoute(permission: RoleEnum) {
   return filterNoPermissionRouteList(sortRouteList(cloneDeep(sidebarRouteList)), permission);
 }
@@ -70,27 +48,6 @@ function filterNoPermissionRouteList(routerList: AppRouteRecordRaw[], roleName: 
   });
 
   return newRoute || [];
-}
-
-// 通过后端返回路由列表过滤无权限路由
-function handleRouteList(routerList: AppRouteRecordRaw[], dataRouter: RouteDataItemType[]) {
-  const newRouteList: AppRouteRecordRaw[] = [];
-  routerList.forEach(i => {
-    if (!i.meta?.whiteRoute) {
-      const rItem = dataRouter.find(r => r.name === i.name);
-      if (rItem) {
-        if (i.children && i.children.length) {
-          const children = handleRouteList(i.children, rItem.children);
-          if (children) newRouteList.push({ ...i, children });
-        } else {
-          newRouteList.push(i);
-        }
-      }
-    } else {
-      newRouteList.push(i);
-    }
-  });
-  return newRouteList;
 }
 
 // 更新route的路由列表

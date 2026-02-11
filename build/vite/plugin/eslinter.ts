@@ -15,7 +15,6 @@ export function configEsLinterPlugin(configEnv: ConfigEnv) {
       'src/**/*.vue',
       'types/**/*.d.ts',
       'types/**/*.ts',
-      'mock/**/*.ts',
       'build/**/*.ts',
       'vite.config.ts',
     ],
