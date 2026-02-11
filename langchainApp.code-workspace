@@ -5,12 +5,6 @@
     },
     {
       "path": "src-tauri"
-    },
-    {
-      "path": "langchain-serve"
-    },
-    {
-      "path": "pty-host"
     }
   ],
   "settings": {}

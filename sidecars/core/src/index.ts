@@ -18,9 +18,15 @@ const MODULE_LOADERS: Record<Mode, () => Promise<{ run: () => Promise<void> }>> 
   "serve-pty": () => import("pty-host"),
 };
 
-/** 当前是否在 pkg 打包后的单文件可执行环境中 */
+/**
+ * 是否在 pkg / @yao-pkg/pkg 打好的单文件可执行环境中运行。
+ * 打包后运行时会设置 process.pkg（含 entrypoint 等），且 __dirname 通常为 /snapshot/... 或 C:\snapshot\...
+ */
 function isPkg(): boolean {
-  return !!(process as NodeJS.Process & { pkg?: unknown }).pkg;
+  const p = process as NodeJS.Process & { pkg?: { entrypoint?: string } };
+  if (p.pkg) return true;
+  const dir = typeof __dirname === "string" ? __dirname : "";
+  return dir.includes("/snapshot/") || dir.includes("\\snapshot\\");
 }
 
 /** 启动一个子进程运行指定 mode（同一可执行文件 + 参数，子进程内执行 module.run()） */

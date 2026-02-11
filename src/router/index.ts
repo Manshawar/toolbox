@@ -12,9 +12,15 @@ const router = createRouter({
           redirect: "/commit",
         },
         {
+          path: "clawbot",
+          name: "Clawbot",
+          component: () => import("@/views/app/clawbot/index.vue"),
+          meta: { title: "clawbot工具" },
+        },
+        {
           path: "commit",
           name: "CommitTool",
-          component: () => import("@/views/Toolbox.vue"),
+          component: () => import("@/views/app/commit/index.vue"),
           meta: { title: "commit工具" },
         },
       ],
