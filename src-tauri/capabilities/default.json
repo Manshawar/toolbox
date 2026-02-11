@@ -22,7 +22,7 @@
       "allow": [
         {
           "args": true,
-          "name": "binaries/langchain-serve",
+          "name": "binaries/core",
           "sidecar": true
         }
       ]

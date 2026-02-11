@@ -8,7 +8,10 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "build:sidecar": "pnpm --filter sidecar-app build",
+    "build:sidecar": "turbo run sidecar:build",
+    "build:sidecar:mac": "turbo run sidecar:build --filter=langchain-serve --filter=pty-host && pnpm --filter core run build:mac",
+    "build:sidecar:win": "turbo run sidecar:build --filter=langchain-serve --filter=pty-host && pnpm --filter core run build:win",
+    "build:sidecar:linux": "turbo run sidecar:build --filter=langchain-serve --filter=pty-host && pnpm --filter core run build:linux",
     "build:app": "turbo run build && pnpm tauri build"
   },
   "dependencies": {
@@ -29,9 +32,9 @@
     "@tauri-apps/cli": "^2",
     "@types/lodash": "^4.17.23",
     "@vitejs/plugin-vue": "^5.2.1",
+    "core": "workspace:*",
     "autoprefixer": "^10.4.24",
     "postcss": "^8.5.6",
-    "sidecar-app": "workspace:*",
     "tailwindcss": "^4.1.18",
     "turbo": "^2.3.0",
     "typescript": "~5.6.2",

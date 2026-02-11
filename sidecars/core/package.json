@@ -1,0 +1,35 @@
+{
+  "name": "core",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "侧车主运行时：根据 argv 决定模式",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsup",
+    "sidecar:build": "tsup",
+    "build:mac": "SIDECAR_TARGET=aarch64-apple-darwin tsup",
+    "build:win": "SIDECAR_TARGET=x86_64-pc-windows-msvc tsup",
+    "build:linux": "SIDECAR_TARGET=x86_64-unknown-linux-gnu tsup",
+    "tauri:dev": "tsup --watch",
+    "tauri:build": "tsup"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@hono/node-server": "^1.13.0",
+    "hono": "^4.6.0",
+    "langchain-serve": "workspace:*",
+    "node-pty": "^1.0.0",
+    "pty-host": "workspace:*",
+    "ws": "^8.18.0"
+  },
+  "packageManager": "pnpm@10.26.2",
+  "devDependencies": {
+    "@types/node": "^22.19.10",
+    "@types/ws": "^8.18.1",
+    "@yao-pkg/pkg": "^6.12.0",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2"
+  }
+}

@@ -8,6 +8,9 @@
     },
     {
       "path": "langchain-serve"
+    },
+    {
+      "path": "pty-host"
     }
   ],
   "settings": {}

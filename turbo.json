@@ -8,6 +8,10 @@
     "dev": {
       "cache": false,
       "persistent": true
+    },
+    "sidecar:build": {
+      "dependsOn": ["^sidecar:build"],
+      "outputs": ["src-tauri/binaries/**"]
     }
   }
 }

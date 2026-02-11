@@ -1,3 +1,5 @@
-# Tauri 单体仓库：根目录 = 主应用（Vue + Tauri），langchain-serve = 侧载二进制构建
+# Tauri 单体仓库：根目录 = 主应用（Vue + Tauri），sidecars/ = 侧载二进制
 packages:
-  - "langchain-serve"
+  - "sidecars/core"
+  - "sidecars/langchain-serve"
+  - "sidecars/pty-host"

@@ -45,7 +45,7 @@ https://heroicons.com/
 pnpm install
 ```
 
-会安装根项目与 workspace 内 `langchain-serve` 的依赖。
+会安装根项目与 workspace 内 `sidecars/` 的依赖。
 
 ### 2. 开发模式
 
@@ -67,7 +67,7 @@ pnpm tauri dev
 
 ### 3. 构建
 
-**仅构建侧载二进制 `langchain-serve`：**
+**仅构建侧载二进制（langchain-serve + pty-host）：**
 
 ```bash
 pnpm run build:sidecar
@@ -92,7 +92,7 @@ pnpm run build
 ## 项目结构简述
 
 - **根目录**：Vue 3 + Vite 前端源码（`src/`）、Tauri 配置（`src-tauri/`）。
-- **langchain-serve/**：侧载服务，用 Hono 提供本地 API，由 Tauri 以 sidecar 形式启动；构建产物供 `src-tauri/binaries/` 使用。
+- **sidecars/langchain-serve/**：侧载服务，用 Hono 提供本地 API；**sidecars/pty-host/**：PTY 终端侧载。构建产物供 `src-tauri/binaries/` 使用。
 
 ---
 
