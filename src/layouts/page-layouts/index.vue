@@ -10,16 +10,19 @@
   <div class="app-wrapper">
     <!-- Windows 下自定义标题栏：缩小 / 放大 / 关闭 -->
     <AppTitleBar />
-    <!-- 侧边导航栏 -->
-    <SideNavigationBar />
-    <!-- 内容区 -->
-    <div class="main-container">
+    <!-- 标题栏下方：侧边栏 + 主内容 -->
+    <div class="app-body">
+      <!-- 侧边导航栏 -->
+      <SideNavigationBar />
+      <!-- 内容区 -->
+      <div class="main-container">
       <!-- 顶部导航栏 -->
       <NavBart />
       <!-- 选项卡 -->
       <AppTabs />
       <!-- 内容区 -->
       <AppMain />
+      </div>
     </div>
   </div>
 </template>
