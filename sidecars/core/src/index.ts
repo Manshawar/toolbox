@@ -10,14 +10,14 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const MODES = ["serve-api", "serve-pty"] as const;
+const MODES = ["langchain-serve", "pty-host"] as const;
 type Mode = (typeof MODES)[number];
 
 const MODULE_LOADERS: Record<Mode, () => Promise<{ run: () => Promise<void> }>> = {
-  "serve-api": () => import("langchain-serve"),
-  "serve-pty": () => import("pty-host"),
+  "langchain-serve": () => import("langchain-serve"),
+  "pty-host": () => import("pty-host"),
 };
-
+console.log(MODULE_LOADERS);
 /**
  * 是否在 pkg / @yao-pkg/pkg 打好的单文件可执行环境中运行。
  * 打包后运行时会设置 process.pkg（含 entrypoint 等），且 __dirname 通常为 /snapshot/... 或 C:\snapshot\...
@@ -64,16 +64,18 @@ async function runInThisProcess(mode: Mode): Promise<void> {
 const cmd = process.argv[2] as Mode | undefined;
 const isWorker = process.env.CORE_WORKER === "1";
 
-if (isWorker && (cmd === "serve-api" || cmd === "serve-pty")) {
+if (isWorker && (cmd === "langchain-serve" || cmd === "pty-host")) {
   runInThisProcess(cmd).catch((err) => {
     console.error(`[core] ${cmd} 运行失败:`, err);
     process.exit(1);
   });
 } else if (!cmd) {
   for (const mode of MODES) spawnWorker(mode);
-} else if (cmd === "serve-api" || cmd === "serve-pty") {
+} else if (cmd === "langchain-serve" || cmd === "pty-host") {
   spawnWorker(cmd);
 } else {
-  console.error("用法: core [serve-api | serve-pty]\n不传参则启动 serve-api 与 serve-pty。");
+  console.error(
+    "用法: core [langchain-serve | pty-host]\n不传参则启动 langchain-serve与 pty-host。"
+  );
   process.exit(1);
 }

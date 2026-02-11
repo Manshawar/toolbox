@@ -8,7 +8,6 @@ import { serve } from "@hono/node-server";
 const HOST = "127.0.0.1";
 
 const app = new Hono();
-
 app.get("/health", (c: Context) => c.json({ ok: true }));
 
 /** 供 core 或直接运行调用 */

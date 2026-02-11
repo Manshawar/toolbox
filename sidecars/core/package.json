@@ -10,7 +10,7 @@
     "build:mac": "SIDECAR_TARGET=aarch64-apple-darwin tsup",
     "build:win": "SIDECAR_TARGET=x86_64-pc-windows-msvc tsup",
     "build:linux": "SIDECAR_TARGET=x86_64-unknown-linux-gnu tsup",
-    "tauri:dev": "tsup --watch",
+    "tauri:dev": "tsup --watch src/**/*.ts --watch ../langchain-serve/src/**/*.ts --watch ../pty-host/src/**/*.ts",
     "tauri:build": "tsup"
   },
   "keywords": [],

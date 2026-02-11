@@ -1,26 +1,38 @@
 import { defineStore } from 'pinia';
-import { store } from '@/store';
+import type { RoleEnum } from '@/enum/role';
+import type { UseInfoType } from '@/server/useInfo';
+import { store } from '..';
 
 export interface UserState {
-  userInfo: unknown;
-  roles: unknown;
+  userInfo: UseInfoType | null;
+  roles: RoleEnum | null;
 }
 
-export const useUserInfoStore = defineStore('userInfo', {
+const useUserInfoStore = defineStore('userInfo', {
   state: (): UserState => ({
     userInfo: null,
     roles: null,
   }),
   actions: {
-    setUserInfo(_value: unknown) {},
-    setRoles(_value: unknown) {},
+    setUserInfo(value: UseInfoType) {
+      this.userInfo = value;
+      this.roles = value.role;
+    },
+    setRoles(value: RoleEnum) {
+      this.roles = value;
+    },
     removeUserInfo() {
       this.userInfo = null;
       this.roles = null;
     },
   },
+  persist: {
+    key: 'userInfo',
+    storage: localStorage,
+    pick: ['userInfo', 'roles'],
+  },
 });
 
-export function useUserInfoStoreHook() {
+export const useUserInfoStoreHook = () => {
   return useUserInfoStore(store);
-}
+};

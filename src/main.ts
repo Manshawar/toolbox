@@ -1,18 +1,36 @@
-import { createApp } from "vue";
-import App from "@/App.vue";
-import router from "@/router";
-import { store } from "@/store";
-import ElementPlus from "element-plus";
-import "element-plus/dist/index.css";
-import { tauriStoreInitPlugin, whenTauriStoreReady } from "@/plugins/tauri-store-init";
-import "@/style.css";
+import { createApp } from 'vue';
+import App from './App.vue';
+import { getServerConfig } from './config';
+import { configMainI18n } from './locales';
+import { configMainRouter } from './router';
+import { configMainStore } from './store';
+import { configMainGlobalProperties } from './utils';
+import { useElementPlus } from './utils/plugin/element';
 
-async function bootstrap() {
-  const app = createApp(App);
-  await whenTauriStoreReady();
-  app.use(store).use(ElementPlus).use(router).use(tauriStoreInitPlugin);
+// tailwind css
+import '@/styles/tailwind.css';
+// element-plus dark style
+import 'element-plus/theme-chalk/src/dark/css-vars.scss';
+// 公共样式
+import '@/styles/index.scss';
 
-  app.mount("#app");
-}
+const app = createApp(App);
 
-bootstrap();
+getServerConfig(app).then(async config => {
+  // 路由
+  await configMainRouter(app);
+
+  // 全局钩子
+  configMainGlobalProperties(app);
+
+  // Pinia
+  configMainStore(app);
+
+  // 国际化
+  configMainI18n(app, config.locale);
+
+  // ElementPlus
+  useElementPlus(app);
+
+  app.mount('#app');
+});

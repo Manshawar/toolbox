@@ -1,0 +1,54 @@
+
+import type { AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+/**
+ * axios 数据处理类
+ */
+
+export interface CreateAxiosOptions extends AxiosRequestConfig {
+  requestOptions?: {
+    withToken?: boolean;
+    specialToken?: string;
+    errorMessageMode?: 'modal' | 'message' | 'none';
+  };
+  interceptor?: AxiosInterceptor;
+}
+
+export type InternalAxiosOptions = Pick<CreateAxiosOptions, 'requestOptions' | 'interceptor'> &
+  InternalAxiosRequestConfig;
+
+export abstract class AxiosInterceptor {
+  /**
+   * @description: 请求前的配置
+   */
+  beforeRequestHook?: (config: AxiosRequestConfig, options: { withToken?: boolean; specialToken?: string; errorMessageMode?: 'modal' | 'message' | 'none'; }) => AxiosRequestConfig;
+
+  /**
+   * @description: 请求成功的处理
+   */
+  requestHook?: (res: AxiosResponse<any>, options: { withToken?: boolean; specialToken?: string; errorMessageMode?: 'modal' | 'message' | 'none'; }) => any;
+
+  /**
+   * @description: 请求失败处理
+   */
+  requestCatchHook?: (e: Error, options: { withToken?: boolean; specialToken?: string; errorMessageMode?: 'modal' | 'message' | 'none'; }) => Promise<any>;
+
+  /**
+   * @description: 请求之前的拦截器
+   */
+  requestInterceptors?: (config: InternalAxiosOptions) => InternalAxiosOptions;
+
+  /**
+   * @description: 请求之前的拦截器错误处理
+   */
+  requestInterceptorsCatch?: (error: Error) => void;
+
+  /**
+   * @description: 请求之后的拦截器
+   */
+  responseInterceptors?: (res: AxiosResponse<any>) => AxiosResponse<any>;
+
+  /**
+   * @description: 请求之后的拦截器错误处理
+   */
+  responseInterceptorsCatch?: (error: Error) => void;
+}

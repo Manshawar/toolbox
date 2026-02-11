@@ -1,3 +1,8 @@
+/**
+ * core 构建配置。
+ * watch 时需在脚本里显式传子包路径，否则 tsup 不会监听 node_modules 内 symlink 的变更：
+
+ */
 import { defineConfig } from "tsup";
 import { execSync } from "child_process";
 import fs from "fs";
