@@ -54,7 +54,7 @@
   },
   "route": {
     "pathName": {
-      "index": "首页",
+      "index": "应用中心",
       "permissions": "权限管理",
       "permissionsPage": "权限切换",
       "testPermissionsPage1": "Admin权限测试页面",

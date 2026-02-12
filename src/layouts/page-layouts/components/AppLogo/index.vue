@@ -1,9 +1,11 @@
 <script setup lang="ts">
   import { getCurrentInstance } from 'vue';
+  import { useDark } from '@vueuse/core';
   import { useRootSetting } from '@/hooks/setting/useRootSetting';
-
+  import SvgIcon from '@/components/SvgIcon/index.vue';
   const { appConfig } = useRootSetting();
   const config = getCurrentInstance()?.appContext.config.globalProperties.$config;
+  const isDark = useDark();
 </script>
 
 <template>
@@ -14,7 +16,8 @@
     }"
   >
     <div class="logo">
-      <img class="logo-img" src="@/assets/logo.png" mode="scaleToFill" alt="logo" />
+      <!-- <img class="logo-img" src="@/assets/logo.png" mode="scaleToFill" alt="logo" /> -->
+      <SvgIcon :name="isDark ? 'cat-white' : 'cat-black'" class="logo-img" />
     </div>
 
     <span class="name">{{ config.title }}</span>

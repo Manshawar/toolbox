@@ -8,7 +8,7 @@
   "greyMode": false,
   "colorWeaknessMode": false,
   "hideNavbart": false,
-  "hideTabs": false,
+  "hideTabs": true,
   "closeTabDrag": false,
   "tabPersistent": true,
   "sidebarFold": "top",

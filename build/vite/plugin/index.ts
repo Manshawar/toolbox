@@ -6,7 +6,7 @@ import vue from "@vitejs/plugin-vue";
 // import VueMacros from 'unplugin-vue-macros/vite';
 
 import vueJsx from "@vitejs/plugin-vue-jsx";
-
+import vueDevTools from "vite-plugin-vue-devtools";
 // 检查插件状态
 import Inspect from "vite-plugin-inspect";
 import type { ConfigEnv, PluginOption } from "vite";
@@ -24,7 +24,6 @@ import { configImageminPlugin } from "./imagemin";
 import { configStylePlugin } from "./style";
 // svg配置
 import { configSvgPlugin } from "./svg";
-
 // 性能分析工具
 import { configVisualizerPlugin } from "./visualizer";
 
@@ -42,6 +41,8 @@ export function createVitePlugins(_isBuild = false, configEnv: ConfigEnv) {
     vue(),
     vueJsx() // 如果需要
   );
+
+  vitePlugins.push(vueDevTools());
 
   vitePlugins.push(configStylePlugin());
 

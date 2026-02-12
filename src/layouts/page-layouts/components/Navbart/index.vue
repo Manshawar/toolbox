@@ -1,7 +1,7 @@
 <script setup lang="ts">
   // import { ref } from 'vue'
   import { ref } from 'vue';
-  import { AppAccount, AppLocale, AppTheme } from '@/components/Application';
+  import { AppLocale, AppTheme } from '@/components/Application';
   import SvgIcon from '@/components/SvgIcon/index.vue';
   import { useRootSetting } from '@/hooks/setting/useRootSetting';
   import Breadcrumb from '../../components/Breadcrumb/index.vue';
@@ -31,7 +31,7 @@
       <div class="navbar-right">
         <AppLocale class="icon" />
         <AppTheme />
-        <AppAccount />
+        <!-- <AppAccount /> -->
         <el-tooltip content="主题 / 外观" placement="bottom">
           <SvgIcon class="cursor" name="iEL-brush" @click="drawer = true" />
         </el-tooltip>

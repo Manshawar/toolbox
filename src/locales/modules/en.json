@@ -54,7 +54,7 @@
   },
   "route": {
     "pathName": {
-      "index": "Home",
+      "index": "App Center",
       "permissions": "Permissions",
       "permissionsPage": "Permissions Toggle",
       "testPermissionsPage1": "Admin Permissions",

@@ -10,7 +10,7 @@ const root: Array<AppRouteRecordRaw> = [
     name: 'RtRoot',
     meta: {
       title: t('route.pathName.index'),
-      icon: 'iEL-home-filled',
+      icon: 'app-app',
       whiteRoute: true,
     },
   },
