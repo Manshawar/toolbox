@@ -26,6 +26,7 @@ macro_rules! invoke_handler {
             $crate::invoke::get_platform,
             $crate::store::store_read,
             $crate::store::store_write,
+            $crate::app_registry::check_apps_installed,
         ]
     };
 }

@@ -1,29 +1,35 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 import ToolboxAppCard from './components/ToolboxAppCard.vue';
 
 defineOptions({
   name: 'RtWelcome',
 });
 
-/** 应用项：path 用于跳转，name 显示，installed 控制是否可点与样式 */
+/** 应用项 */
 interface AppItem {
   id: string;
   name: string;
   path: string;
   installed: boolean;
-  /** SvgIcon 名称，如 iEL-home-filled */
   icon?: string;
-  /** 图片/SVG 地址，支持 .svg / .png / .jpg / .webp 等 */
   iconSrc?: string;
-  /** 未安装时的安装进度 0–100，占位用，你可替换为真实逻辑 */
   installProgress?: number;
+  /** 检测到的版本号 */
+  version?: string | null;
+}
+
+/** Rust 端返回结构 */
+interface AppInstallInfo {
+  installed: boolean;
+  version: string | null;
 }
 
 const activeTab = ref('tools');
 
-/** 按分类的应用列表（可后续从配置或接口拉取） */
-const appsByCategory: Record<string, AppItem[]> = {
+/** 按分类的应用列表（reactive 以便异步更新） */
+const appsByCategory = reactive<Record<string, AppItem[]>>({
   tools: [
     {
       id: 'clawbot',
@@ -33,11 +39,39 @@ const appsByCategory: Record<string, AppItem[]> = {
       icon: 'app-openclaw-lobster',
     },
   ],
-};
+});
 
 const categoryTabs = [
   { key: 'tools', label: '工具' },
 ];
+
+/** 批量检测所有应用的安装状态 */
+async function checkAllApps() {
+  const allApps = Object.values(appsByCategory).flat();
+  const appIds = allApps.map((a) => a.id);
+  if (appIds.length === 0) return;
+
+  try {
+    const result = await invoke<Record<string, AppInstallInfo>>(
+      'check_apps_installed',
+      { appIds },
+    );
+    console.log('[checkAllApps] result:', result);
+    for (const app of allApps) {
+      const info = result[app.id];
+      if (info) {
+        app.installed = info.installed;
+        app.version = info.version;
+      }
+    }
+  } catch (err) {
+    console.error('[checkAllApps] invoke failed:', err);
+  }
+}
+
+onMounted(() => {
+  checkAllApps();
+});
 </script>
 
 <template>

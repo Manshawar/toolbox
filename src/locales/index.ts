@@ -22,8 +22,8 @@ const i18n = createI18n({
   messages: messages as LocaleMessages,
 });
 
-export const configMainI18n = (app: App<Element>, locale: localeKey) => {
-  i18n.global.locale.value = locale;
+export const configMainI18n = (app: App<Element>, locale?: localeKey) => {
+  i18n.global.locale.value = locale || LocalesEnum.ZHCN;
   app.use(i18n);
 };
 
