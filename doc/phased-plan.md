@@ -176,4 +176,5 @@
 
 - 侧车启动与管控思路：见 `sidecar-startup.md`（若存在）或本计划阶段 1。  
 - Clawbot 集成与 iframe：见 `openclaw-integration-idea.md`（若存在）或本计划阶段 2。  
+- **Agent 环境动态管理（Claw/Clawbot 不打包、npm 私有目录 + 镜像 + 一键更新）**：见 [agent-env-dynamic-management.md](./agent-env-dynamic-management.md)。  
 - 动态按钮契约：见 `dynamic-buttons-contract.md`（若存在）。
