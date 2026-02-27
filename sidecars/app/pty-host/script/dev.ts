@@ -1,11 +1,10 @@
 /**
- * 开发入口：优先 --port，否则从项目根目录 .env 的 VITE_PTY_PORT 读取
- * 用法: pnpm dev [--port 3010]
+ * 开发入口：从 .env 读端口并注入环境变量，然后直接启动当前应用（不 spawn pnpm，避免 ENOENT）
  */
 import path from "path";
 import fs from "fs";
 
-const DEFAULT_PTY_PORT = 3010;
+const DEFAULT_PTY_PORT = 8265;
 
 function loadEnvPort(): number {
   const rootEnv = path.join(process.cwd(), "../../../.env");
@@ -30,6 +29,7 @@ function parseDevPort(): number {
 }
 
 const devPort = parseDevPort();
-const { run } = await import("../src/index.ts");
-await run({ port: devPort });
-export {};
+process.env.VITE_PTY_PORT = String(devPort);
+(async () => {
+  await import("../src/index.ts");
+})();
