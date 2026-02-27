@@ -124,3 +124,11 @@ export const request = createAxios();
 
 /** PTY 服务请求实例，直连 pty-host；WebSocket 需用 new WebSocket(ptyBaseURL) */
 export const ptyWs = createAxios({ baseURL: ptyBaseURL });
+
+/** 基于 tauri-plugin-http 的封装（与 request/ptyWs 解耦），见 tauriHttp.ts */
+export {
+  getApiBaseUrl,
+  getPtyBaseUrl,
+  fetchApi,
+  fetchPty,
+} from "./tauriHttp";

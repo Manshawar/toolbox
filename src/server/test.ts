@@ -1,5 +1,6 @@
-import {request} from '@/utils/axios';
+import { fetchApi } from '@/utils/axios';
 
-export const testLink = () => {
- return request.get({ url: '/health' });
+export const testLink = async () => {
+  const response = await fetchApi('/health');
+  return response.json();
 };
