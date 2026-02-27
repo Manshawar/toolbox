@@ -1,5 +1,5 @@
 import type { RoleEnum } from "@/enum/role";
-import { deffHttp } from "@/utils/axios";
+import { request } from "@/utils/axios";
 
 export interface UseInfoType {
   name: string;
@@ -18,7 +18,7 @@ export interface UserParams {
 }
 
 export const getUserInfo = (user: string, pwd: string) =>
-  deffHttp.post<UseInfoType, UserParams>(
+  request.post<UseInfoType, UserParams>(
     {
       url: "/mock_api/login",
       data: { username: user, password: pwd },

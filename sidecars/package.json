@@ -1,33 +1,43 @@
 {
   "name": "core",
   "version": "1.0.0",
-  "type": "module",
   "description": "侧车主运行时：根据 argv 决定模式",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsup",
+    "dev": "turbo run dev --filter=langchain-serve --filter=pty-host",
+    "dev:tsup": "pnpm run build:sidecar && node dist/index.js && pnpm tauri dev",
+    "build": "turbo run sidecar:build --filter=langchain-serve --filter=pty-host --filter=core",
+    "build:sidecar": "turbo run sidecar:build --filter=langchain-serve --filter=pty-host --filter=core",
     "sidecar:build": "tsup",
     "build:mac": "SIDECAR_TARGET=aarch64-apple-darwin tsup",
     "build:win": "SIDECAR_TARGET=x86_64-pc-windows-msvc tsup",
     "build:linux": "SIDECAR_TARGET=x86_64-unknown-linux-gnu tsup",
-    "tauri:dev": "tsup --watch src/**/*.ts --watch ../langchain-serve/src/**/*.ts --watch ../pty-host/src/**/*.ts",
+    "tauri:dev": "tsup --watch src/**/*.ts --watch app/langchain-serve/src/**/*.ts --watch app/pty-host/src/**/*.ts",
     "tauri:build": "tsup"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "pkg": {
+    "assets": [
+      "node_modules/node-pty/**/*",
+      "node_modules/ws/**/*",
+      "dist/langchain-serve.js",
+      "dist/pty-host.js",
+      "dist/langchain-serve.js.map",
+      "dist/pty-host.js.map"
+    ]
+  },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
+    "consola": "^3.2.3",
     "hono": "^4.6.0",
-    "langchain-serve": "workspace:*",
     "node-pty": "^1.0.0",
-    "pty-host": "workspace:*",
     "ws": "^8.18.0"
   },
   "packageManager": "pnpm@10.26.2",
   "devDependencies": {
     "@types/node": "^22.19.10",
-    "@types/ws": "^8.18.1",
     "@yao-pkg/pkg": "^6.13.0",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2"

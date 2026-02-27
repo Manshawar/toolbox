@@ -1,4 +1,5 @@
 import type { ConfigEnv, UserConfig } from "vite";
+import { loadEnv } from "vite";
 
 import { createViteBuild } from "./build/vite/build";
 import { createViteCSS } from "./build/vite/css";
@@ -11,25 +12,34 @@ import { createViteServer } from "./build/vite/server";
 // https://vitejs.dev/config/
 export default (configEnv: ConfigEnv): UserConfig => {
   const { mode, command } = configEnv;
-  // const root = process.cwd();
-
-  // const env = loadEnv(mode, root);
+  const root = process.cwd();
+  const env = loadEnv(mode, root, "");
 
   const isBuild = command === "build";
+  const isDev = !isBuild;
+  const apiPort = Number(env.VITE_API_PORT) || 3000;
+  const ptyPort = Number(env.VITE_PTY_PORT) || 3010;
+  // 端口/BaseURL 统一直连后端根地址，不经过代理：开发用 .env 端口，打包后 Tauri 由 applySidecarPorts 覆盖
+  const apiBaseURL = isDev ? `http://127.0.0.1:${apiPort}` : "";
+  const ptyBaseURL = isDev ? `http://127.0.0.1:${ptyPort}` : "";
 
   return {
     // 设为 false 可以避免 Vite 清屏而错过在终端中打印某些关键信息。命令行模式下请通过 --clearScreen false 设置。
     clearScreen: false,
     logLevel: "info",
     envPrefix: ["VITE_", "TAURI_"],
+    define: {
+      "import.meta.env.VITE_API_BASE_URL": JSON.stringify(apiBaseURL),
+      "import.meta.env.VITE_PTY_BASE_URL": JSON.stringify(ptyBaseURL),
+    },
     // esbuild
     esbuild: createViteEsbuild(isBuild),
     // 解析配置
     resolve: createViteResolve(mode, __dirname),
     // 插件配置
     plugins: createVitePlugins(isBuild, configEnv),
-    // 服务配置
-    server: createViteServer(),
+    // 服务配置（从根目录 .env 的 VITE_DEV_PORT 读取端口）
+    server: createViteServer(env),
     // 打包配置
     build: createViteBuild(),
     // 依赖优化配置

@@ -5,14 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:app": "concurrently \"cross-env TAURI_SKIP_SIDECAR=1 pnpm tauri dev\" \"pnpm --filter core run dev\"",
+    "dev:tsup": "pnpm run build:sidecar && concurrently \"pnpm --filter core run tauri:dev\" \"pnpm tauri dev\"",
     "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "tauri": "tauri",
     "build:sidecar": "turbo run sidecar:build",
     "build:sidecar:mac": "turbo run sidecar:build --filter=langchain-serve --filter=pty-host && pnpm --filter core run build:mac",
     "build:sidecar:win": "turbo run sidecar:build --filter=langchain-serve --filter=pty-host && pnpm --filter core run build:win",
     "build:sidecar:linux": "turbo run sidecar:build --filter=langchain-serve --filter=pty-host && pnpm --filter core run build:linux",
-    "build:app": "turbo run build && pnpm tauri build"
+    "build:app": "pnpm run build:sidecar && pnpm tauri build"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
@@ -42,6 +42,8 @@
   "devDependencies": {
     "@intlify/unplugin-vue-i18n": "^11.0.3",
     "@tauri-apps/cli": "^2",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
     "@types/lodash": "^4.17.23",
     "@types/lodash-es": "^4.17.12",
     "@types/nprogress": "^0.2.3",

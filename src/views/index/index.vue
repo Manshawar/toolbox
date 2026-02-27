@@ -86,40 +86,27 @@ onMounted(() => {
     <!-- 分类 Tab -->
     <div class="px-6 pt-4">
       <div class="flex gap-2 flex-wrap">
-        <button
-          v-for="tab in categoryTabs"
-          :key="tab.key"
-          type="button"
+        <button v-for="tab in categoryTabs" :key="tab.key" type="button"
           class="px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out cursor-pointer hover:scale-105 active:scale-95"
-          :class="
-            activeTab === tab.key
-              ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-              : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200/80 dark:hover:bg-gray-600/80 hover:shadow-sm'
-          "
-          @click="activeTab = tab.key"
-        >
+          :class="activeTab === tab.key
+            ? 'bg-gray-200 dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
+            : 'bg-gray-100 dark:bg-gray-700/60 text-gray-600 dark:text-gray-300 hover:bg-gray-200/80 dark:hover:bg-gray-600/80 hover:shadow-sm'
+            " @click="activeTab = tab.key">
           {{ tab.label }}
         </button>
       </div>
+
     </div>
 
     <!-- 应用网格 -->
     <main class="flex-1 overflow-auto px-6 py-6">
-      <div
-        class="grid gap-4"
-        style="grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));"
-      >
-        <ToolboxAppCard
-          v-for="app in appsByCategory[activeTab]"
-          :key="app.id"
-          :name="app.name"
-          :path="app.path"
-          :installed="app.installed"
-          :icon="app.icon"
-          :icon-src="app.iconSrc"
-          :install-progress="app.installProgress ?? 0"
-        />
+
+      <div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));">
+        <ToolboxAppCard v-for="app in appsByCategory[activeTab]" :key="app.id" :name="app.name" :path="app.path"
+          :installed="app.installed" :icon="app.icon" :icon-src="app.iconSrc"
+          :install-progress="app.installProgress ?? 0" />
       </div>
+
     </main>
   </div>
 </template>

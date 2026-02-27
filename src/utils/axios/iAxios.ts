@@ -43,6 +43,15 @@ export class IAxios {
   }
 
   /**
+   * @description: 设置 baseURL（用于 Tauri 下根据 sidecar 端口切换）
+   */
+  setBaseURL(baseURL: string) {
+    if (this.axiosInstance) {
+      this.axiosInstance.defaults.baseURL = baseURL;
+    }
+  }
+
+  /**
    * @description 挂载拦截器
    */
   private setupInterceptors() {

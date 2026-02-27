@@ -1,8 +1,8 @@
 import type { AppConfig } from '@/store/types';
-import { deffHttp } from '@/utils/axios';
+import { request } from '@/utils/axios';
 
 enum Api {
   ROUTE_CONFIG_INFO = '/serverConfig.json',
 }
 
-export const getConfigInfo = () => deffHttp.get<AppConfig>({ url: Api.ROUTE_CONFIG_INFO });
+export const getConfigInfo = () => request.get<AppConfig>({ url: Api.ROUTE_CONFIG_INFO });

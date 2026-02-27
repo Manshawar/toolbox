@@ -11,7 +11,7 @@
     },
     "sidecar:build": {
       "dependsOn": ["^sidecar:build"],
-      "outputs": ["src-tauri/binaries/**"]
+      "outputs": ["dist/**", "src-tauri/binaries/**"]
     }
   }
 }

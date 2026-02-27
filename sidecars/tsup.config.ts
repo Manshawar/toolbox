@@ -47,8 +47,9 @@ function pkgToBinaries() {
   }
 
   const ext = targetTriple.includes("windows") ? ".exe" : "";
-  const binariesDir = path.join(__dirname, "..", "..", "src-tauri", "binaries");
-  const bundlePath = path.join(__dirname, "dist", "index.js");
+  const binariesDir = path.join(__dirname, "..", "src-tauri", "binaries");
+  const distDir = path.join(__dirname, "dist");
+  const bundlePath = path.join(distDir, "index.js");
   const outputPath = path.join(binariesDir, `core-${targetTriple}${ext}`);
 
   if (!fs.existsSync(bundlePath)) {
@@ -65,11 +66,12 @@ function pkgToBinaries() {
     console.log(`[core] 已删除旧二进制: ${outputPath}`);
   }
 
+  const pkgConfigPath = path.join(__dirname, "package.json");
+
   try {
-    // 使用 @yao-pkg/pkg 打包
-    // 注意：@yao-pkg/pkg 的 CLI 命令仍然是 pkg
+    // 使用 @yao-pkg/pkg 打包；--config 将 node-pty、ws 等 external 依赖打进快照，避免运行时 UNEXPECTED-20
     execSync(
-      `pnpm exec pkg "${bundlePath}" --target ${pkgTarget} --output "${outputPath}" --compress GZip`,
+      `pnpm exec pkg "${bundlePath}" --config "${pkgConfigPath}" --target ${pkgTarget} --output "${outputPath}" --compress GZip`,
       {
         stdio: "inherit",
         cwd: __dirname,
@@ -86,6 +88,16 @@ function pkgToBinaries() {
     const stats = fs.statSync(outputPath);
     const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
     console.log(`[core] 文件大小: ${sizeMB} MB`);
+
+    // 将两个服务 js 复制到 binaries，与 exe 同目录，launcher 按路径 spawn 时能找到
+    for (const name of ["langchain-serve.js", "pty-host.js", "langchain-serve.js.map", "pty-host.js.map"]) {
+      const src = path.join(distDir, name);
+      const dest = path.join(binariesDir, name);
+      if (fs.existsSync(src)) {
+        fs.copyFileSync(src, dest);
+        console.log(`[core] 已复制 ${name} -> binaries/`);
+      }
+    }
   } catch (error) {
     console.error("[core] 打包失败:", error);
     process.exit(1);
@@ -93,9 +105,13 @@ function pkgToBinaries() {
 }
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: {
+    index: "src/index.ts",
+    "langchain-serve": "app/langchain-serve/src/index.ts",
+    "pty-host": "app/pty-host/src/index.ts",
+  },
   outDir: "dist",
-  format: ["esm"],
+  format: ["cjs"],
   splitting: false,
   sourcemap: true,
   clean: true,
@@ -103,16 +119,13 @@ export default defineConfig({
   platform: "node",
   target: "node24", // 与 pkg target 保持一致
   treeshake: true,
-  external: ["node-pty"], // node-pty 是原生模块，需要 external
-  noExternal: ["langchain-serve", "pty-host"],
+  external: ["node-pty", "ws"], // 原生模块与 CJS 包（ws 内用 require("events")），不打进 ESM bundle
   esbuildOptions(options) {
-    // 确保 ESM 正确输出
     options.banner = {
       js: "#!/usr/bin/env node",
     };
   },
   onSuccess: async () => {
-    // 延迟执行确保文件写入完成
     await new Promise((resolve) => setTimeout(resolve, 100));
     pkgToBinaries();
   },

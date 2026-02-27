@@ -2,8 +2,6 @@
 //!
 //! 新增命令时：在对应业务模块实现后，在 `invoke_handler!` 宏内的列表中追加；在 `lib.rs` 中通过 `.invoke_handler(invoke_handler!())` 注册。
 
-use crate::store;
-
 /// 应用级命令（可后续拆到 `app` 子模块）
 #[tauri::command]
 pub fn greet(name: &str) -> String {
@@ -24,9 +22,10 @@ macro_rules! invoke_handler {
         tauri::generate_handler![
             $crate::invoke::greet,
             $crate::invoke::get_platform,
+            $crate::sidecar::get_sidecar_ports,
             $crate::store::store_read,
             $crate::store::store_write,
-            $crate::app_registry::check_apps_installed,
         ]
     };
 }
+

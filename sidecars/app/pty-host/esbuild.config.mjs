@@ -6,16 +6,15 @@ const buildOptions = {
   entryPoints: ['src/index.ts'],
   bundle: true,
   platform: 'node',
-  format: 'esm',
-  outdir: 'dist',
-  outbase: 'src',
-  external: [],
+  format: 'cjs',
+  outfile: 'dist/index.js',
+  external: ['node-pty'],
 }
 
 if (watch) {
   const ctx = await esbuild.context(buildOptions)
   await ctx.watch()
-  console.log('[langchain-serve] watching src/...')
+  console.log('[pty-host] watching src/...')
 } else {
   await esbuild.build(buildOptions)
 }

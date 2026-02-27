@@ -6,6 +6,7 @@ import { configMainRouter } from './router';
 import { configMainStore } from './store';
 import { configMainGlobalProperties } from './utils';
 import { useElementPlus } from './utils/plugin/element';
+import { applySidecarPorts } from '@/config/sidecarPorts';
 
 // tailwind css
 import '@/styles/tailwind.css';
@@ -17,6 +18,9 @@ import '@/styles/index.scss';
 const app = createApp(App);
 
 getServerConfig(app).then(async config => {
+  // Tauri 下若有 sidecar 端口则覆盖 request / ptyWs 的 baseURL
+  await applySidecarPorts();
+
   // 路由
   await configMainRouter(app);
 

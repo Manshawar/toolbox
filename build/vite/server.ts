@@ -1,7 +1,9 @@
 import type { ServerOptions } from "vite";
 
-export function createViteServer(): ServerOptions {
-  const port = 1420;
+const DEFAULT_PORT = 1420;
+
+export function createViteServer(env: Record<string, string> = {}): ServerOptions {
+  const port = Number(env.VITE_DEV_PORT) || DEFAULT_PORT;
   const viteServer: ServerOptions = {
     host: "127.0.0.1",
     port,
@@ -12,20 +14,6 @@ export function createViteServer(): ServerOptions {
     // 自定义响应头（与 tauri.conf.json 中 security.headers 保持一致）
     headers: {
       "Permissions-Policy": "unload=(self)",
-    },
-    // boolean | string 启动项目时自动在浏览器打开应用程序；如果为string，比如"/index.html"，会打开http://localhost:5173/index.html
-    // open: true,
-    // boolean | CorsOptions  为开发服务器配置 CORS。默认启用并允许任何源，传递一个 选项对象 来调整行为或设为 false 表示禁用。
-    // cors: true,
-    // 设置为 true 强制使依赖预构建。
-    // force: false,
-    // 自定义代理规则
-    proxy: {
-      "/api": {
-        target: "",
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
-      },
     },
   };
   return viteServer;

@@ -1,26 +1,25 @@
 {
-  "name": "pty-host",
+  "name": "langchain-serve",
   "version": "1.0.0",
   "type": "module",
-  "description": "PTY + WebSocket 服务，供 core 并入",
+  "description": "Hono API 服务，供 core 并入",
   "main": "src/index.ts",
   "scripts": {
     "build": "node esbuild.config.mjs",
     "sidecar:build": "node esbuild.config.mjs",
-    "dev": "tsx watch src/index.ts --exec 'node dist/index.js'",
+    "dev": "tsx script/dev.ts",
     "build:watch": "node esbuild.config.mjs --watch"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "node-pty": "^1.0.0",
-    "ws": "^8.18.0"
+    "@hono/node-server": "^1.13.0",
+    "hono": "^4.6.0"
   },
   "packageManager": "pnpm@10.26.2",
   "devDependencies": {
-    "@types/node": "^22.19.10",
-    "@types/ws": "^8.18.1",
+    "@types/node": "^22.19.13",
     "esbuild": "^0.24.0",
     "tsx": "^4.19.2"
   }

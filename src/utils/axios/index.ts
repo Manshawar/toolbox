@@ -99,22 +99,28 @@ const interceptor: AxiosInterceptor = {
   },
 };
 
+/** baseURL 由 vite.config 注入（VITE_API_BASE_URL / VITE_PTY_BASE_URL），端口不在此处参与 */
+const apiBaseURL = import.meta.env?.VITE_API_BASE_URL ?? "";
+const ptyBaseURL = import.meta.env?.VITE_PTY_BASE_URL ?? "";
+
 function createAxios(opt?: Partial<CreateAxiosOptions>) {
   return new IAxios({
     ...{
-      acoisadmisf: "",
-      // 请求时间
+      baseURL: apiBaseURL,
       timeout: 10 * 1000,
-      // (拦截器)数据处理方式
       interceptor,
       headers: { "Content-Type": "application/json" },
-      // 配置项（需要在拦截器中做的处理），下面的选项都可以在独立的接口请求中覆盖
       requestOptions: {
-        withToken: false, // 暂不携带 token，接入登录后再改为 true
+        withToken: false,
         errorMessageMode: "message",
       },
     },
     ...(opt || {}),
   });
 }
-export const deffHttp = createAxios();
+
+/** 默认请求实例，直连 langchain-serve（baseURL 由 Vite / applySidecarPorts 注入） */
+export const request = createAxios();
+
+/** PTY 服务请求实例，直连 pty-host；WebSocket 需用 new WebSocket(ptyBaseURL) */
+export const ptyWs = createAxios({ baseURL: ptyBaseURL });

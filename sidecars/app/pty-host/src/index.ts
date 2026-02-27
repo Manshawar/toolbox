@@ -5,7 +5,9 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { WebSocketServer, type WebSocket } from "ws";
 import * as pty from "node-pty";
+import { consola } from "consola";
 
+const log = consola.withTag("pty-host");
 const HOST = "127.0.0.1";
 
 const server = createServer((req: IncomingMessage, res: ServerResponse) => {
@@ -57,13 +59,26 @@ wss.on("connection", (ws: WebSocket) => {
   });
 });
 
-/** 供 core 或直接运行调用 */
-export async function run(): Promise<void> {
-  server.listen(0, HOST, () => {
+/** 供 core 或直接运行调用；port 优先 options，否则读 env VITE_PTY_PORT，为 0 时由系统分配 */
+export async function run(options?: { port?: number }): Promise<void> {
+  const port =
+    options?.port ?? (Number(process.env.VITE_PTY_PORT) || 0);
+  server.listen(port, HOST, () => {
     const addr = server.address();
-    const port = typeof addr === "object" && addr ? addr.port : 0;
-    console.log(`PTY_PORT=${port}`);
+    const p = typeof addr === "object" && addr ? addr.port : 0;
+    const base = `http://${HOST}:${p}`;
+    const wsBase = `ws://${HOST}:${p}`;
+    log.info(`PTY_PORT=${p} | HTTP: ${base} | WebSocket: ${wsBase} | 健康检查: ${base}/health`);
   });
 }
 
 // 单二进制时由 core 调用 run()；独立运行需: node -e "import('./dist/index.js').then(m=>m.run())"
+
+// 直接执行 dist/pty-host.js 时自动启动服务
+// @ts-ignore
+if (typeof require !== "undefined" && require.main === module) {
+  run().catch((err) => {
+    console.error("[pty-host] 启动失败:", err);
+    process.exit(1);
+  });
+}

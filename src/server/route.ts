@@ -1,4 +1,4 @@
-import { deffHttp } from '@/utils/axios';
+import { request } from '@/utils/axios';
 
 enum Api {
   ROUTE_LIST = '/api/getRoute',
@@ -14,4 +14,4 @@ export interface RouteDataItemType {
   children: RouteDataItemType[];
 }
 
-export const getRouteApi = (data: Param) => deffHttp.post<RouteDataItemType[], Param>({ url: Api.ROUTE_LIST, data });
+export const getRouteApi = (data: Param) => request.post<RouteDataItemType[], Param>({ url: Api.ROUTE_LIST, data });
