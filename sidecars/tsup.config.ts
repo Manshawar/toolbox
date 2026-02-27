@@ -90,23 +90,37 @@ function pkgToBinaries() {
     console.log(`[core] 文件大小: ${sizeMB} MB`);
 
     // 将两个服务 js 复制到 binaries，与 exe 同目录，launcher 按路径 spawn 时能找到
-    for (const name of ["langchain-serve.js", "pty-host.js", "langchain-serve.js.map", "pty-host.js.map"]) {
-      const src = path.join(distDir, name);
-      const dest = path.join(binariesDir, name);
-      if (fs.existsSync(src)) {
-        fs.copyFileSync(src, dest);
-        console.log(`[core] 已复制 ${name} -> binaries/`);
-      }
-    }
+    // for (const name of ["langchain-serve.js", "pty-host.js", "langchain-serve.js.map", "pty-host.js.map"]) {
+    //   const src = path.join(distDir, name);
+    //   const dest = path.join(binariesDir, name);
+    //   if (fs.existsSync(src)) {
+    //     fs.copyFileSync(src, dest);
+    //     console.log(`[core] 已复制 ${name} -> binaries/`);
+    //   }
+    // }
   } catch (error) {
     console.error("[core] 打包失败:", error);
     process.exit(1);
   }
 }
 
+/** 将 launcher 脚本（build/index.js）以写入文本形式塞入 dist，作为入口；不经过 tsup 打包 */
+function injectLauncher() {
+  const launcherPath = path.join(__dirname, "build", "index.js");
+  const distPath = path.join(__dirname, "dist", "index.js");
+  if (!fs.existsSync(launcherPath)) {
+    console.error("[core] launcher 不存在: " + launcherPath);
+    process.exit(1);
+  }
+  const content =
+    "#!/usr/bin/env node\n" + fs.readFileSync(launcherPath, "utf8");
+  fs.mkdirSync(path.dirname(distPath), { recursive: true });
+  fs.writeFileSync(distPath, content, "utf8");
+  console.log("[core] 已写入 dist/index.js (launcher)");
+}
+
 export default defineConfig({
   entry: {
-    index: "src/index.ts",
     "langchain-serve": "app/langchain-serve/src/index.ts",
     "pty-host": "app/pty-host/src/index.ts",
   },
@@ -117,9 +131,9 @@ export default defineConfig({
   clean: true,
   bundle: true,
   platform: "node",
-  target: "node24", // 与 pkg target 保持一致
+  target: "node24",
   treeshake: true,
-  external: ["node-pty", "ws"], // 原生模块与 CJS 包（ws 内用 require("events")），不打进 ESM bundle
+  external: ["node-pty", "ws"],
   esbuildOptions(options) {
     options.banner = {
       js: "#!/usr/bin/env node",
@@ -127,6 +141,7 @@ export default defineConfig({
   },
   onSuccess: async () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
+    injectLauncher();
     pkgToBinaries();
   },
 });
