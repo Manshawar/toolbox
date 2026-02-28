@@ -1,100 +1,91 @@
 # Sidecars 侧车服务
 
-Tauri 应用的侧车服务集合。**core** 为 launcher，构建时产出三个 JS：`dist/index.js`（launcher）、`dist/langchain-serve.js`、`dist/pty-host.js`。launcher 按路径 spawn 后两个独立文件，避免打包后路径识别问题；pkg 只打 index.js 为单二进制，并把两个服务 js 复制到 `src-tauri/binaries/` 与 exe 同目录。
+Tauri 应用的侧车集合：**core** 为入口二进制，内部根据参数加载 **langchain-serve**（Hono API + better-sqlite3）或 **pty-host**（node-pty + WebSocket 终端）。构建由 tsup 打包两个 worker 的 JS，再通过 @yao-pkg/pkg 将 launcher 与依赖打成单 exe（`src-tauri/binaries/core-*`）。
+
+---
 
 ## 目录结构
 
 ```
 sidecars/
-├── package.json       # core 包（name: "core"）
-├── tsup.config.ts     # 多入口：index + langchain-serve + pty-host → dist/*.js；pkg 仅 index → binaries/core-*
-├── src/
-│   ├── index.ts       # launcher：spawn dist/langchain-serve.js、dist/pty-host.js（或 exe 同目录）
-│   └── entries/
-│       ├── langchain-serve.ts   # 独立入口 → dist/langchain-serve.js
-│       └── pty-host.ts          # 独立入口 → dist/pty-host.js
+├── package.json          # core 包（name: "core"），含 pkg 配置与依赖
+├── tsup.config.ts        # 多入口打包 langchain-serve、pty-host → dist/*.js；onSuccess 注入 launcher + 调 pkg
+├── build/
+│   └── index.js         # Launcher：根据 argv[2]（langchain-serve | pty-host）require 对应 dist/*.js
 ├── app/
-│   ├── langchain-serve/   # Hono API，被 entries 打包进 dist/langchain-serve.js
-│   └── pty-host/          # PTY + WebSocket，被 entries 打包进 dist/pty-host.js
+│   ├── langchain-serve/ # Hono API，端口 API_PORT；可选 DB_PATH + better-sqlite3
+│   │   ├── src/index.ts
+│   │   ├── script/dev.ts
+│   │   └── package.json
+│   └── pty-host/        # PTY + WebSocket，端口 PTY_PORT
+│       ├── src/index.ts
+│       ├── script/dev.ts
+│       └── package.json
+├── dist/                # 构建产出（tsup 生成，launcher 写入）
+│   ├── index.js         # Launcher（来自 build/index.js，不经过 tsup 打包）
+│   ├── langchain-serve.js
+│   └── pty-host.js
 └── README.md
 ```
 
-## 项目根目录三条命令（推荐）
+- **无** `src/` 或 `src/entries/`：两服务入口直接指向 `app/*/src/index.ts`，launcher 为独立脚本 `build/index.js`，在 tsup 的 onSuccess 中写入 `dist/index.js`。
 
-在**项目根目录**执行，一条命令同时起前端 + 后端：
+---
 
-| 命令 | 作用 |
+## 构建流程
+
+1. **tsup**：根据 `tsup.config.ts` 的 `entry` 将 `app/langchain-serve/src/index.ts`、`app/pty-host/src/index.ts` 分别打包为 `dist/langchain-serve.js`、`dist/pty-host.js`（external：node-pty、ws、better-sqlite3，由 pkg 以 assets 形式打进二进制）。
+2. **注入 Launcher**：把 `build/index.js` 内容写入 `dist/index.js`，作为 pkg 的入口。
+3. **pkg**：以 `dist/index.js` 为入口、结合 `package.json` 的 `pkg.assets`，生成 `src-tauri/binaries/core-<target>.exe`（或当前平台无扩展名）。Launcher 运行时通过 `__dirname` 找同目录下的 `langchain-serve.js`、`pty-host.js`（pkg 会把它们打进快照，路径在 snapshot 内）。
+
+---
+
+## 运行模型
+
+- **Launcher**（`build/index.js`）：读取 `process.argv[2]`，为 `langchain-serve` 时 `require('./langchain-serve.js')`，为 `pty-host` 时 `require('./pty-host.js')`；否则报错退出。
+- **Tauri**：在 setup 中 spawn **core**，通过 `.args(["langchain-serve"])` 或 `.args(["pty-host"])` 传参，并注入环境变量（如 `API_PORT`、`PTY_PORT`、可选 `DB_PATH`）。当前实现中先 spawn 一次 core 跑 langchain-serve；pty-host 可按需再 spawn 一次 core 并传 `pty-host`。
+
+---
+
+## 命令说明
+
+### 在 sidecars 目录下
+
+| 命令 | 说明 |
 |------|------|
-| **`pnpm run dev:app`** | **前端 Tauri + 后端用 dev 起两个侧车（无子进程）**：并行跑「Tauri（不启 sidecar）」和「两 app 的 dev」（`turbo run dev`），前端走 Vite 代理到 `.env` 里配置的端口，不改 app 代码时用这条即可。 |
-| **`pnpm run dev:tsup`** | **前端 Tauri + 后端用 tsup 打包、子进程启动，并监听 app 变化**：先执行一次 `build:sidecar`（esbuild 两 app → tsup core），再并行跑「tsup --watch（监听 `src/` 与 `app/*/src/`）」和「Tauri 带 sidecar」。app 里内容变了 tsup 会重新打 core，需**重启一次 Tauri 窗口**才能用上新 bundle。 |
-| **`pnpm run build:app`** | **最终打包**：先 `turbo run sidecar:build`（按顺序：两 app esbuild → core tsup），再 `pnpm tauri build`（会执行 beforeBuildCommand 打前端）。产出桌面安装包与 `src-tauri/binaries/core-*`。 |
+| `pnpm run dev` | 不打包：并行启动 `langchain-serve`、`pty-host` 的 dev（各自 `tsx script/dev.ts`），端口由 script 从根目录 `.env` 或 `--port` 解析。 |
+| `pnpm run build` | 执行 tsup → 产出 `dist/`，并执行 onSuccess（注入 launcher + pkg），生成 `src-tauri/binaries/core-<当前平台>`。 |
+| `pnpm run build:mac` / `build:win` / `build:linux` | 设置 `SIDECAR_TARGET` 后执行 tsup，用于跨平台打二进制（需在对应环境或 CI 中跑）。 |
 
-## 三种命令（在 sidecars 目录下执行）
+### 在项目根目录
 
-| 命令 | 作用 |
+| 命令 | 说明 |
 |------|------|
-| **`pnpm run dev`** | **不打包**：并行启动 `app/langchain-serve`、`app/pty-host` 的 dev 服务（各自 `tsx script/dev.ts`），不跑 tsup，适合改两个 app 源码时用。 |
-| **`pnpm run dev:tsup`** | **tsup 打包 + 进程启动**：先按顺序执行 esbuild（两 app）→ tsup（core），再执行 `node dist/index.js`，由 core 用子进程拉起 langchain-serve、pty-host，行为接近 Tauri 里跑 sidecar。 |
-| **`pnpm run build`** | **打包**：只做构建（不运行）。先对两 app 做 esbuild，再对 core 做 tsup，产出 `dist/` 与（若在根目录执行平台命令）`src-tauri/binaries/core-*`。打生产二进制需在根目录跑 `build:sidecar:mac` / `build:sidecar:win` / `build:sidecar:linux`。 |
+| `pnpm run build:sidecar` | 执行 `pnpm -C sidecars run build`，即上述 sidecars 的 build。 |
+| `pnpm run build:sidecar:win` / `:mac` / `:linux` | 在根目录执行 sidecars 的 build:win / build:mac / build:linux。 |
+| `pnpm run build:app` | 先 `build:sidecar`，再 `pnpm tauri build`，产出完整桌面安装包。 |
 
-## 开发阶段 app 变了，tsup 会监听到吗？要对 app 先打包吗？
+---
 
-- **会监听到**：`tauri:dev` 里 tsup 的 watch 包含 `app/langchain-serve/src/**/*.ts`、`app/pty-host/src/**/*.ts`，所以 **app 里内容变了，tsup 会重新打 core 的 bundle**（`dist/index.js` 会更新）。
-- **不需要先对 app 做 esbuild**：core 用 `noExternal` 把两 app **从源码**打进一个 bundle，读的是 workspace 里 `langchain-serve`、`pty-host` 的入口（如 `src/index.ts`），**不读**它们的 `dist/`。所以开发时只要 tsup 在 watch，改 app 源码即可，**不用先跑两 app 的 esbuild**。只有在「最终打包」或「单独跑两 app 的 dist」时才需要先跑 app 的 sidecar:build。
+## 两个 App 说明
 
-## 为什么按这个顺序打包？
+### langchain-serve
 
-- **依赖关系**：core 的 `package.json` 里声明了 `"langchain-serve": "workspace:*"`、`"pty-host": "workspace:*"`，且 tsup 用 `noExternal` 把这两个包打进同一个 bundle，所以 **core 依赖这两个 app 包**。
-- **Turbo 的 `^sidecar:build`**：根目录 `turbo.json` 里 `sidecar:build` 配了 `dependsOn: ["^sidecar:build"]`。`^` 表示「先跑**依赖包**的同名任务」。
-- **执行顺序**：Turbo 会先对 langchain-serve、pty-host 跑 `sidecar:build`（二者无 workspace 依赖，可并行），等两者都完成后再对 core 跑 `sidecar:build`。所以顺序是：**① langchain-serve esbuild → dist/**，**② pty-host esbuild → dist/**（① ② 可并行），**③ core tsup → dist/index.js**（并可选 pkg → 二进制）。
-- **为什么要先打两 app**：虽然 tsup 从源码 bundle 两 app（不直接读它们的 dist），但先跑 app 的 sidecar:build 能保证两包可安装、可解析，且 standalone 跑或调试时用的也是它们各自的 dist，顺序统一、缓存一致。
+- **栈**：Hono、@hono/node-server，可选 better-sqlite3（需设置 `DB_PATH`）。
+- **端口**：`API_PORT`（默认 8264）。
+- **接口**：`GET /health`；可选 `GET /db`（需 DB_PATH）。
+- **开发**：`pnpm --filter langchain-serve run dev`（tsx 跑 `script/dev.ts`，端口从 `.env` 或参数来）。
 
-## 启动方式
+### pty-host
 
-### 0. 项目根目录 pnpm 命令（Tauri 应用）
+- **栈**：node-pty、ws。
+- **端口**：`PTY_PORT`（默认 8265）。
+- **开发**：`pnpm --filter pty-host run dev`。
 
-在**项目根目录**可用两条命令启动 Tauri 开发：
+---
 
-- 日常开发用根目录 **`pnpm run dev:app`**（无子进程）或 **`pnpm run dev:tsup`**（子进程 + 监听 app）。
+## 依赖与 pkg 注意点
 
-### 1. core 启动方式
-
-- **无参**：launcher 在脚本目录（`__dirname` / exe 同目录 / `CORE_SCRIPTS_DIR`）下找 `langchain-serve.js`、`pty-host.js`，用当前 node 或 exe 各 spawn 一个子进程运行它们。
-- **带 .js 路径**（内部用）：以 `exe path/to/xxx.js` 启动时，当前进程会动态 import 该脚本并执行 `run()`，用于子进程入口。
-
-### 2. 开发（在 sidecars 目录下）
-
-- 只起两 app、不打包：`pnpm run dev`
-- 先打包再以进程方式起两包：`pnpm run dev:tsup`
-- 或手动：`pnpm run build` 后 `node dist/index.js`（可加参数 `langchain-serve` / `pty-host` 只起一个）
-
-### 3. 构建侧车
-
-在 **sidecars 目录**执行 `pnpm run build`（或根目录 `pnpm run build:sidecar`）。打平台二进制在**根目录**执行：
-
-```bash
-pnpm run build:sidecar:mac   # 或 build:sidecar:win / build:sidecar:linux
-```
-
-### 4. 完整应用构建
-
-```bash
-pnpm run build:app
-```
-
-## 构建顺序（`sidecar:build`）
-
-见上文「为什么按这个顺序打包？」：先两 app 的 esbuild，再 core 的 tsup。
-
-## 进程模型
-
-- Tauri 启动 `core`（无参数）
-- core 不传参时 spawn 两个子进程（或单二进制下复用同一可执行文件 + 参数）
-- 传参时只 spawn 对应的一个
-- 输出：`API_PORT=xxx`、`PTY_PORT=xxx`
-
-## 三分文件与 pkg
-
-- **构建**：tsup 多入口产出 `dist/index.js`（launcher）、`dist/langchain-serve.js`、`dist/pty-host.js`。launcher 不打包两服务，只按路径 spawn。
-- **pkg**：仅把 `index.js` 打成 exe（`binaries/core-<target>`），并把 `langchain-serve.js`、`pty-host.js` 复制到同目录，便于 exe 按路径启动。
-- **脚本目录**：launcher 解析顺序为 `CORE_SCRIPTS_DIR`（Tauri 可设）→ pkg 下 exe 所在目录 → 开发时 `__dirname`（dist）。
+- **node-pty、ws、better-sqlite3** 在 tsup 中为 `external`，不打进 dist 的 bundle；pkg 通过 `package.json` 的 `pkg.assets` 将 `node_modules/node-pty/**`、`node_modules/ws/**`、`node_modules/better-sqlite3/**` 以及 `dist/*.js` 等打进二进制，运行时从 pkg 快照内解析。
+- **Node 版本**：tsup 的 target 为 node24；pkg 使用 `@yao-pkg/pkg`，target 为 `node24-<os>-<arch>`，与当前开发环境一致即可。
+- better-sqlite3 建议使用 **v12.x**（Node 24 有 prebuild，无需本机 Python/node-gyp）。详见根目录 `doc/sidecar-architecture.md` 中「better-sqlite3 rebuild 失败」一节。
