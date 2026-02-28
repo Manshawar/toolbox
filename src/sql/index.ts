@@ -32,6 +32,7 @@ export const insertData = async (name = "test") => {
 export const queryData = async () => {
   try {
     const rows = await db.select().from(testTable).all();
+    console.log(rows);
     return rows;
   } catch (error) {
     console.error(error);

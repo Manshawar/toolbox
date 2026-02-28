@@ -55,11 +55,19 @@ export async function run(
 }
 
 /**
- * 执行读操作（SELECT），返回行数组
+ * 执行读操作（SELECT），返回行数组。
+ * 将每行转为纯对象并统一为小写列名，兼容 Tauri/sqlx 返回的 ID/NAME 等，且显式读属性值避免 getter 导致 undefined。
  */
 export async function all<T = unknown>(sql: string, params: unknown[] = []): Promise<T[]> {
   const db = await getTauriDb();
   const query = toTauriPlaceholders(sql);
-  const rows = await db.select<T[]>(query, params);
-  return Array.isArray(rows) ? rows : [];
+  const rows = await db.select<Record<string, unknown>[]>(query, params);
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => {
+    const copy: Record<string, unknown> = {};
+    for (const k of Object.keys(row)) {
+      copy[k.toLowerCase()] = (row as Record<string, unknown>)[k];
+    }
+    return copy as T;
+  });
 }

@@ -4,7 +4,7 @@ use serde_json::{Map, Number, Value};
 use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Manager};
 
-const SETTINGS_RESOURCE_PATH: &str = "resource/settings.json";
+const SETTINGS_RESOURCE_PATH: &str = "config/settings.json";
 
 fn default_json() -> Value {
     let mut m = Map::new();
@@ -16,7 +16,10 @@ fn default_json() -> Value {
 
 /// 供 get_config 命令与内部使用；仅读文件，不合并 runtime 端口。
 pub fn load_config_json(app: &AppHandle) -> Value {
-    let path = match app.path().resolve(SETTINGS_RESOURCE_PATH, BaseDirectory::Resource) {
+    let path = match app
+        .path()
+        .resolve(SETTINGS_RESOURCE_PATH, BaseDirectory::Resource)
+    {
         Ok(p) => p,
         Err(_) => return default_json(),
     };
