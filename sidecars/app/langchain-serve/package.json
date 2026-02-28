@@ -12,7 +12,8 @@
   "license": "ISC",
   "dependencies": {
     "@hono/node-server": "^1.13.0",
-    "hono": "^4.6.0"
+    "hono": "^4.6.0",
+    "sql.js": "^1.11.0"
   },
   "packageManager": "pnpm@10.26.2",
   "devDependencies": {
