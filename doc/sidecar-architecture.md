@@ -118,3 +118,18 @@
 **若目标包含「用户没有 Node 也能通过应用一键安装 Clawbot」**：  
 - **必须**以某种形式「自带 Node」：**要么打包 Node 进安装包**（推荐），**要么首次运行时下载 Portable Node**。  
 **若可接受「用户需自行安装 Node」**：可不打包、不下载 Node，仅做检测与提示（阶段 A）；继续用方案 A 跑两服务即可。
+
+---
+
+## 常见问题：better-sqlite3 rebuild 失败（Node 24 / Windows）
+
+**现象**：`pnpm rebuild better-sqlite3` 报错，或运行 langchain-serve 时 `Could not locate the bindings file` / `find Python ... Could not find any Python installation`。
+
+**原因**：
+
+1. **Node 24 无 prebuild**：better-sqlite3 **v11** 没有为 Node 24 提供预编译二进制（见 [WiseLibs/better-sqlite3#1384](https://github.com/WiseLibs/better-sqlite3/issues/1384)），安装会回退到 `node-gyp` 本地编译。
+2. **node-gyp 需要 Python + VS 构建环境**：在 Windows 上本地编译需要已安装 Python（并可在 PATH 或 `npm config set python` 中找到）和 Visual Studio Build Tools（含 C++ 工作负载），否则会报 `Could not find any Python installation to use`。
+
+**处理**（推荐）：**升级到 better-sqlite3 v12.1.0 及以上**。v12 起提供 Node 24 的 prebuild，无需本地编译、无需安装 Python/VS。本仓库已统一为 `^12.1.0`，执行 `pnpm install` 即可拉取预编译的 `better_sqlite3.node`。
+
+若必须继续使用 v11（或 v12 在某一平台仍无 prebuild），则需在本机安装 [Python](https://www.python.org/) 与 [Windows Build Tools](https://github.com/nodejs/node-gyp#on-windows)，再执行 `pnpm rebuild better-sqlite3`。

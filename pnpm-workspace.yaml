@@ -3,3 +3,5 @@ packages:
   - "sidecars"
   - "sidecars/app/langchain-serve"
   - "sidecars/app/pty-host"
+onlyBuiltDependencies:
+  - better-sqlite3

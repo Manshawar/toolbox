@@ -134,7 +134,7 @@ export default defineConfig({
   platform: "node",
   target: "node24",
   treeshake: true,
-  external: ["node-pty", "ws", "node:sqlite"],
+  external: ["node-pty", "ws", "better-sqlite3"],
   esbuildOptions(options) {
     options.banner = {
       js: "#!/usr/bin/env node",

@@ -17,15 +17,16 @@
     "assets": [
       "node_modules/node-pty/**/*",
       "node_modules/ws/**/*",
+      "node_modules/better-sqlite3/**/*",
       "dist/langchain-serve.js",
       "dist/pty-host.js",
       "dist/langchain-serve.js.map",
-      "dist/pty-host.js.map",
-      "dist/sql-wasm.wasm"
+      "dist/pty-host.js.map"
     ]
   },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
+    "better-sqlite3": "^12.1.0",
     "consola": "^3.2.3",
     "hono": "^4.6.0",
     "node-pty": "^1.0.0",
