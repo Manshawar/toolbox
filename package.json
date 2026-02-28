@@ -5,13 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:app": "concurrently \"cross-env TAURI_SKIP_SIDECAR=1 pnpm tauri dev\" \"pnpm --filter core run dev\"",
-    "dev:tsup": "pnpm run build:sidecar && concurrently \"pnpm --filter core run tauri:dev\" \"pnpm tauri dev\"",
+    "dev:app": "concurrently \"cross-env TAURI_SKIP_SIDECAR=1 pnpm tauri dev\" \"pnpm -C sidecars run dev\"",
+    "dev:tauri": "pnpm run build:sidecar && pnpm tauri dev",
     "build": "vue-tsc --noEmit && vite build",
-    "build:sidecar": "turbo run sidecar:build",
-    "build:sidecar:mac": "turbo run sidecar:build --filter=langchain-serve --filter=pty-host && pnpm --filter core run build:mac",
-    "build:sidecar:win": "turbo run sidecar:build --filter=langchain-serve --filter=pty-host && pnpm --filter core run build:win",
-    "build:sidecar:linux": "turbo run sidecar:build --filter=langchain-serve --filter=pty-host && pnpm --filter core run build:linux",
+    "build:sidecar": "pnpm -C sidecars run build",
+    "build:sidecar:mac": "pnpm -C sidecars run build:mac",
+    "build:sidecar:win": "pnpm -C sidecars run build:win",
+    "build:sidecar:linux": "pnpm -C sidecars run build:linux",
     "build:app": "pnpm run build:sidecar && pnpm tauri build"
   },
   "dependencies": {

@@ -5,10 +5,7 @@
   "description": "PTY + WebSocket 服务，供 core 并入",
   "main": "src/index.ts",
   "scripts": {
-    "build": "node esbuild.config.mjs",
-    "sidecar:build": "node esbuild.config.mjs",
-    "dev": "tsx script/dev.ts",
-    "build:watch": "node esbuild.config.mjs --watch"
+    "dev": "tsx script/dev.ts"
   },
   "keywords": [],
   "author": "",
@@ -21,7 +18,6 @@
   "devDependencies": {
     "@types/node": "^22.19.10",
     "@types/ws": "^8.18.1",
-    "esbuild": "^0.24.0",
     "tsx": "^4.19.2"
   }
 }

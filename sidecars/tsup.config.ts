@@ -1,7 +1,9 @@
 /**
- * core 构建配置。
- * watch 时需在脚本里显式传子包路径，否则 tsup 不会监听 node_modules 内 symlink 的变更：
-
+ * Sidecar 构建：仅依赖 tsup。
+ * 执行 tsup 会：
+ * 1. 打包 langchain-serve + pty-host 到 dist/
+ * 2. 注入 launcher (build/index.js) 为 dist/index.js
+ * 3. 调用 pkg 生成 src-tauri/binaries/core-<target>
  */
 import { defineConfig } from "tsup";
 import { execSync } from "child_process";
