@@ -46,7 +46,7 @@ importers:
         version: 1.11.19
       drizzle-orm:
         specifier: ^0.38.0
-        version: 0.38.4(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0)(sql.js@1.14.0)
+        version: 0.38.4(@types/better-sqlite3@7.6.13)(@types/sql.js@1.4.9)(better-sqlite3@11.10.0)(sql.js@1.14.0)
       element-plus:
         specifier: ^2.13.2
         version: 2.13.2(vue@3.5.29(typescript@5.6.3))
@@ -135,6 +135,9 @@ importers:
       sass-embedded:
         specifier: ^1.97.3
         version: 1.97.3
+      strnum:
+        specifier: ^2.1.2
+        version: 2.1.2
       tailwindcss:
         specifier: ^4.1.18
         version: 4.2.1
@@ -218,6 +221,9 @@ importers:
       '@types/node':
         specifier: ^22.19.13
         version: 22.19.13
+      '@types/sql.js':
+        specifier: ^1.4.9
+        version: 1.4.9
       tsx:
         specifier: ^4.19.2
         version: 4.21.0
@@ -1321,6 +1327,9 @@ packages:
   '@types/better-sqlite3@7.6.13':
     resolution: {integrity: sha512-NMv9ASNARoKksWtsq/SHakpYAYnhBrQgGD8zkLYk/jaK8jUGn08CfEdTRgYhMypUQAfzSP8W6gNLe0q19/t4VA==}
 
+  '@types/emscripten@1.41.5':
+    resolution: {integrity: sha512-cMQm7pxu6BxtHyqJ7mQZ2kXWV5SLmugybFdHCBbJ5eHzOo6VhBckEgAT3//rP5FwPHNPeEiq4SmQ5ucBwsOo4Q==}
+
   '@types/eslint@9.6.1':
     resolution: {integrity: sha512-FXx2pKgId/WyYo2jXw63kk7/+TY7u7AziEJxJAnSFzHlqTAS3Ync6SvgYAN/k4/PQpnnVuzoMuVnByKK2qp0ag==}
 
@@ -1381,6 +1390,9 @@ packages:
 
   '@types/sortablejs@1.15.9':
     resolution: {integrity: sha512-7HP+rZGE2p886PKV9c9OJzLBI6BBJu1O7lJGYnPyG3fS4/duUCcngkNCjsLwIMV+WMqANe3tt4irrXHSIe68OQ==}
+
+  '@types/sql.js@1.4.9':
+    resolution: {integrity: sha512-ep8b36RKHlgWPqjNG9ToUrPiwkhwh0AEzy883mO5Xnd+cL6VBH1EvSjBAAuxLUFF2Vn/moE3Me6v9E1Lo+48GQ==}
 
   '@types/svgo@2.6.4':
     resolution: {integrity: sha512-l4cmyPEckf8moNYHdJ+4wkHvFxjyW6ulm9l4YGaOxeyBWPhBOT0gvni1InpFPdzx1dKf/2s62qGITwxNWnPQng==}
@@ -4777,6 +4789,9 @@ packages:
   strnum@1.1.2:
     resolution: {integrity: sha512-vrN+B7DBIoTTZjnPNewwhx6cBA/H+IS7rfW68n7XxC1y7uoiGQBxaKzqucGUgavX15dJgiGztLJ8vxuEzwqBdA==}
 
+  strnum@2.1.2:
+    resolution: {integrity: sha512-l63NF9y/cLROq/yqKXSLtcMeeyOfnSQlfMSlzFt/K73oIaD8DGaQWd7Z34X9GPiKqP5rbSh84Hl4bOlLcjiSrQ==}
+
   sucrase@3.35.1:
     resolution: {integrity: sha512-DhuTmvZWux4H1UOnWMB3sk0sbaCVOoQZjv8u1rDoTV0HTdGem9hkAZtl4JZy8P2z4Bg0nT+YMeOFyVr4zcG5Tw==}
     engines: {node: '>=16 || 14 >=14.17'}
@@ -6229,6 +6244,8 @@ snapshots:
       '@types/node': 22.19.13
     optional: true
 
+  '@types/emscripten@1.41.5': {}
+
   '@types/eslint@9.6.1':
     dependencies:
       '@types/estree': 1.0.8
@@ -6299,6 +6316,11 @@ snapshots:
       '@types/node': 22.19.13
 
   '@types/sortablejs@1.15.9': {}
+
+  '@types/sql.js@1.4.9':
+    dependencies:
+      '@types/emscripten': 1.41.5
+      '@types/node': 22.19.13
 
   '@types/svgo@2.6.4':
     dependencies:
@@ -7368,9 +7390,10 @@ snapshots:
       p-event: 2.3.1
       pify: 3.0.0
 
-  drizzle-orm@0.38.4(@types/better-sqlite3@7.6.13)(better-sqlite3@11.10.0)(sql.js@1.14.0):
+  drizzle-orm@0.38.4(@types/better-sqlite3@7.6.13)(@types/sql.js@1.4.9)(better-sqlite3@11.10.0)(sql.js@1.14.0):
     optionalDependencies:
       '@types/better-sqlite3': 7.6.13
+      '@types/sql.js': 1.4.9
       better-sqlite3: 11.10.0
       sql.js: 1.14.0
 
@@ -9936,6 +9959,8 @@ snapshots:
       escape-string-regexp: 1.0.5
 
   strnum@1.1.2: {}
+
+  strnum@2.1.2: {}
 
   sucrase@3.35.1:
     dependencies:
