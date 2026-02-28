@@ -17,6 +17,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
+        .plugin(tauri_plugin_sql::Builder::default().build())
         .manage(sidecar::SidecarPorts::default())
         .setup(|app| {
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
