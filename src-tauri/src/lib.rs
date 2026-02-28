@@ -26,6 +26,7 @@ pub fn run() {
                 let skip = std::env::var("TAURI_SKIP_SIDECAR").as_deref() == Ok("1");
                 if skip {
                     eprintln!("[sidecar] 已跳过（TAURI_SKIP_SIDECAR=1），请手动启动子进程");
+                    sidecar::write_sidecar_env_when_skip(app.handle());
                 } else {
                     eprintln!("[sidecar] 准备启动 core 子进程...");
                     if let Err(e) = sidecar::start_sidecars_on_setup(app.handle()) {

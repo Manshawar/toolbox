@@ -5,20 +5,20 @@
   "description": "Hono API 服务，供 core 并入",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "tsx script/dev.ts"
+    "dev": "tsx script/dev.ts --watch src/index.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@hono/node-server": "^1.13.0",
-    "hono": "^4.6.0",
-    "sql.js": "^1.11.0"
+    "drizzle-orm": "^0.36.0",
+    "hono": "^4.6.0"
   },
   "packageManager": "pnpm@10.26.2",
   "devDependencies": {
     "@types/node": "^22.19.13",
-    "@types/sql.js": "^1.4.9",
+    "dotenv": "^16.4.5",
     "tsx": "^4.19.2"
   }
 }

@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "dev:app": "pnpm tauri dev",
-    "dev:app:manual": "cross-env TAURI_SKIP_SIDECAR=1 pnpm tauri dev",
+    "dev:app:manual:init": "concurrently -n api,app \"cross-env TAURI_SKIP_SIDECAR=1 pnpm tauri dev\"",
+    "dev:app:manual": "concurrently -n api,app \"cross-env TAURI_SKIP_SIDECAR=1 pnpm tauri dev\" \"pnpm -C sidecars/app/langchain-serve run dev\"",
     "dev:tauri": "pnpm run build:sidecar && pnpm tauri dev",
     "build": "vue-tsc --noEmit && vite build",
     "build:sidecar": "pnpm -C sidecars run build",

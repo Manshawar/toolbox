@@ -1,7 +1,9 @@
 //! 子进程（sidecar）启动与端口管理。
 //! - 未设 TAURI_SKIP_SIDECAR：用 portpicker 查询可用端口并启动 sidecar，端口写入 SidecarPorts，由 get_config 合并后返回前端。
-//! - TAURI_SKIP_SIDECAR=1：不启动 sidecar，get_config 仅返回 settings.json 的端口。
+//! - TAURI_SKIP_SIDECAR=1：不启动 sidecar，在 sidecars/.env 下生成与注入一致的环境变量，供手动启动子进程时读取。
 
+use std::fs;
+use std::io::Write;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_shell::process::CommandEvent;
@@ -124,4 +126,58 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
         api_port, pty_port
     );
     Ok(())
+}
+
+/// 当 TAURI_SKIP_SIDECAR=1 时调用：在项目根下的 sidecars/.env 写入与侧车注入一致的环境变量，供手动启动 langchain-serve 时读取。
+/// 路径为 src-tauri 上层（项目根）/sidecars/.env，与 sidecars/package.json 同级。
+pub fn write_sidecar_env_when_skip(app: &AppHandle) {
+    let cwd = match std::env::current_dir() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("[sidecar] 无法获取当前目录，跳过写入 .env: {}", e);
+            return;
+        }
+    };
+    let sidecars_dir = cwd
+        .parent()
+        .map(|p| p.join("sidecars"))
+        .filter(|p| p.join("package.json").exists())
+        .or_else(|| {
+            let s = cwd.join("sidecars");
+            if s.join("package.json").exists() {
+                Some(s)
+            } else {
+                None
+            }
+        })
+        .unwrap_or_else(|| cwd.join("sidecars"));
+    let env_path = sidecars_dir.join(".env");
+
+    let api_port = config::get_api_port(app);
+    let pty_port = config::get_pty_port(app);
+
+    let mut lines = vec![
+        format!("API_PORT={}", api_port),
+        format!("PTY_PORT={}", pty_port),
+    ];
+
+    if is_dev() {
+        if let Ok(app_data) = app.path().app_data_dir() {
+            let sql_db_name = config::get_sqlite_db_name(app);
+            let db_path = app_data.join(&sql_db_name);
+            let db_path_s = db_path.to_string_lossy();
+            lines.push(format!("SQLITE_DB_PATH={}", db_path_s));
+            lines.push(format!("DB_PATH={}", db_path_s));
+        }
+    }
+
+    if let Err(e) = fs::create_dir_all(&sidecars_dir) {
+        eprintln!("[sidecar] 创建 sidecars 目录失败: {}", e);
+        return;
+    }
+    let content = lines.join("\n");
+    match fs::File::create(&env_path).and_then(|mut f| f.write_all(content.as_bytes())) {
+        Ok(()) => println!("[sidecar] 已写入 {}（TAURI_SKIP_SIDECAR=1，供手动启动子进程读取）", env_path.display()),
+        Err(e) => eprintln!("[sidecar] 写入 .env 失败: {}", e),
+    }
 }
