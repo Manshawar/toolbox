@@ -15,6 +15,7 @@
     "build:app": "pnpm run build:sidecar && pnpm tauri build"
   },
   "dependencies": {
+    "drizzle-orm": "^0.38.0",
     "@element-plus/icons-vue": "^2.3.1",
     "@heroicons/vue": "^2.2.0",
     "@tailwindcss/vite": "^4.1.18",
