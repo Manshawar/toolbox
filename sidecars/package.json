@@ -20,7 +20,8 @@
       "dist/langchain-serve.js",
       "dist/pty-host.js",
       "dist/langchain-serve.js.map",
-      "dist/pty-host.js.map"
+      "dist/pty-host.js.map",
+      "dist/sql-wasm.wasm"
     ]
   },
   "dependencies": {

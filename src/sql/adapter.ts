@@ -1,6 +1,12 @@
 import type Database from "@tauri-apps/plugin-sql";
+import { store } from "@/store";
+import { useTauriConfigStore } from "@/store/modules/tauriConfig";
 
-const DB_PATH = "sqlite:test.db";
+/** 从 Pinia 读取（main 启动时已通过 IPC get_config 从 resource/settings.json 注入），缺省 test.db */
+function getDbPath(): string {
+  const name = useTauriConfigStore(store).sqliteDbName;
+  return `sqlite:${name}`;
+}
 
 const TEST_TABLE_SQL = `
 CREATE TABLE IF NOT EXISTS test (
@@ -18,7 +24,7 @@ export async function getTauriDb(): Promise<Database> {
     return dbInstance;
   }
   const Database = (await import("@tauri-apps/plugin-sql")).default;
-  dbInstance = await Database.load(DB_PATH);
+  dbInstance = await Database.load(getDbPath());
   if (!tableEnsured) {
     await dbInstance.execute(TEST_TABLE_SQL);
     tableEnsured = true;

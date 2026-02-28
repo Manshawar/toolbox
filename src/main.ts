@@ -3,8 +3,9 @@ import App from './App.vue';
 import { getServerConfig } from './config';
 import { configMainI18n } from './locales';
 import { configMainRouter } from './router';
-import { configMainStore } from './store';
+import { configMainStore, store } from './store';
 import { configMainGlobalProperties } from './utils';
+import { initTauriConfig } from './utils/getConfig';
 import { useElementPlus } from './utils/plugin/element';
 import { applySidecarPorts } from '@/config/sidecarPorts';
 
@@ -29,6 +30,7 @@ getServerConfig(app).then(async config => {
 
   // Pinia
   configMainStore(app);
+  await initTauriConfig(store);
 
   // 国际化
   configMainI18n(app, config.locale);

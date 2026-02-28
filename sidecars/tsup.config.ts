@@ -114,8 +114,7 @@ function injectLauncher() {
     console.error("[core] launcher 不存在: " + launcherPath);
     process.exit(1);
   }
-  const content =
-    "#!/usr/bin/env node\n" + fs.readFileSync(launcherPath, "utf8");
+  const content = "#!/usr/bin/env node\n" + fs.readFileSync(launcherPath, "utf8");
   fs.mkdirSync(path.dirname(distPath), { recursive: true });
   fs.writeFileSync(distPath, content, "utf8");
   console.log("[core] 已写入 dist/index.js (launcher)");
@@ -135,7 +134,7 @@ export default defineConfig({
   platform: "node",
   target: "node24",
   treeshake: true,
-  external: ["node-pty", "ws"],
+  external: ["node-pty", "ws", "sql.js"],
   esbuildOptions(options) {
     options.banner = {
       js: "#!/usr/bin/env node",

@@ -41,6 +41,9 @@
     ],
     "externalBin": [
       "binaries/core"
+    ],
+    "resources": [
+      "resource/settings.json"
     ]
   }
 }

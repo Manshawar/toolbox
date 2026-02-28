@@ -22,6 +22,7 @@ macro_rules! invoke_handler {
         tauri::generate_handler![
             $crate::invoke::greet,
             $crate::invoke::get_platform,
+            $crate::config::get_config,
             $crate::sidecar::get_sidecar_ports,
             $crate::store::store_read,
             $crate::store::store_write,
