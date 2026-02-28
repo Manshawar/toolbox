@@ -1,12 +1,12 @@
 /**
  * 基于 tauri-plugin-http 的请求封装，与 request/ptyWs 解耦。
  * - Tauri 起 sidecar：端口从 get_sidecar_ports 获取。
- * - dev:app（TAURI_SKIP_SIDECAR=1，单独起 sidecars/app 的 langchain-serve、pty-host）：
- *   无 sidecar 端口时用 .env 固定端口，即 VITE_API_BASE_URL / VITE_PTY_BASE_URL（Vite 注入），
- *   或直接用 VITE_API_PORT / VITE_PTY_PORT 拼成 http://127.0.0.1:${port}。
+ * - 无 sidecar 时：端口从 Pinia tauriConfig 取（initTauriConfig 启动时已从 Tauri 拉取）。
  */
 import { invoke } from "@tauri-apps/api/core";
 import { fetch } from "@tauri-apps/plugin-http";
+import { store } from "@/store";
+import { useTauriConfigStore } from "@/store/modules/tauriConfig";
 
 type SidecarPortsPayload = { api_port: number; pty_port: number } | null;
 
@@ -19,32 +19,30 @@ async function getSidecarPorts(): Promise<SidecarPortsPayload> {
   }
 }
 
-/** 无 sidecar 时的 API base：优先 Vite 注入的 baseURL，否则用 .env 的 VITE_API_PORT 拼 */
+/** 无 sidecar 时的端口：从 init 时已写入的 tauriConfig store 取 */
+function getConfigPorts(): { api_port: number; pty_port: number } {
+  const s = useTauriConfigStore(store);
+  return { api_port: s.api_port, pty_port: s.pty_port };
+}
+
 function fallbackApiBase(): string {
-  const base = import.meta.env?.VITE_API_BASE_URL ?? "";
-  if (base) return base;
-  const port = import.meta.env?.VITE_API_PORT;
-  if (port != null && String(port).trim() !== "") return `http://127.0.0.1:${port}`;
-  return "";
+  const { api_port } = getConfigPorts();
+  return `http://127.0.0.1:${api_port}`;
 }
 
-/** 无 sidecar 时的 PTY base：优先 Vite 注入的 baseURL，否则用 .env 的 VITE_PTY_PORT 拼 */
 function fallbackPtyBase(): string {
-  const base = import.meta.env?.VITE_PTY_BASE_URL ?? "";
-  if (base) return base;
-  const port = import.meta.env?.VITE_PTY_PORT;
-  if (port != null && String(port).trim() !== "") return `http://127.0.0.1:${port}`;
-  return "";
+  const { pty_port } = getConfigPorts();
+  return `http://127.0.0.1:${pty_port}`;
 }
 
-/** 获取 API baseURL：Tauri sidecar 端口优先，否则走 dev:app 固定端口（.env） */
+/** 获取 API baseURL：Tauri sidecar 端口优先，否则从 IPC get_config 取 api_port */
 export async function getApiBaseUrl(): Promise<string> {
   const ports = await getSidecarPorts();
   if (ports) return `http://127.0.0.1:${ports.api_port}`;
   return fallbackApiBase();
 }
 
-/** 获取 PTY baseURL：Tauri sidecar 端口优先，否则走 dev:app 固定端口（.env） */
+/** 获取 PTY baseURL：Tauri sidecar 端口优先，否则从 IPC get_config 取 pty_port */
 export async function getPtyBaseUrl(): Promise<string> {
   const ports = await getSidecarPorts();
   if (ports) return `http://127.0.0.1:${ports.pty_port}`;

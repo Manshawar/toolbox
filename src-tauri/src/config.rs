@@ -1,44 +1,71 @@
-//! 配置：通过 IPC 暴露给前端。优先读打包进应用的 settings.json（bundle.resources），再回退到默认。
+//! 配置：读 settings.json 文本，缺键补默认后当 JSON 发给前端，无单独类型。
 
-use serde::{Deserialize, Serialize};
+use serde_json::{Map, Number, Value};
 use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Manager};
 
-const DEFAULT_SQLITE_DB_NAME: &str = "test.db";
 const SETTINGS_RESOURCE_PATH: &str = "resource/settings.json";
 
-#[derive(Debug, Deserialize)]
-struct SettingsFile {
-    #[serde(default)]
-    sqlite_db_name: Option<String>,
+fn default_json() -> Value {
+    let mut m = Map::new();
+    m.insert("sqlite_db_name".into(), Value::String("test.db".into()));
+    m.insert("api_port".into(), Value::Number(Number::from(8264)));
+    m.insert("pty_port".into(), Value::Number(Number::from(8265)));
+    Value::Object(m)
 }
 
-/// 从打包进应用的 settings.json（bundle.resources）读取
-fn sqlite_db_name_from_resource(app: &AppHandle) -> Option<String> {
-    let path = app.path().resolve(SETTINGS_RESOURCE_PATH, BaseDirectory::Resource).ok()?;
-    let s = std::fs::read_to_string(&path).ok()?;
-    let settings: SettingsFile = serde_json::from_str(&s).ok()?;
-    settings
-        .sqlite_db_name
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
+fn load_config_json(app: &AppHandle) -> Value {
+    let path = match app.path().resolve(SETTINGS_RESOURCE_PATH, BaseDirectory::Resource) {
+        Ok(p) => p,
+        Err(_) => return default_json(),
+    };
+    let s = match std::fs::read_to_string(&path) {
+        Ok(x) => x,
+        Err(_) => return default_json(),
+    };
+    let mut obj: Map<String, Value> = match serde_json::from_str(&s) {
+        Ok(Value::Object(m)) => m,
+        _ => return default_json(),
+    };
+    obj.entry("sqlite_db_name")
+        .or_insert_with(|| Value::String("test.db".into()));
+    obj.entry("api_port")
+        .or_insert_with(|| Value::Number(Number::from(8264)));
+    obj.entry("pty_port")
+        .or_insert_with(|| Value::Number(Number::from(8265)));
+    Value::Object(obj)
 }
 
-/// 前端常用配置项（settings.json → 默认值）
-#[derive(Debug, Serialize)]
-pub struct AppConfig {
-    pub sqlite_db_name: String,
-}
-
-/// 供 Rust 内部使用（如 sidecar）：从 resource/settings.json 取 SQLite 库文件名，与 get_config 一致。
-pub fn get_sqlite_db_name(app: &AppHandle) -> String {
-    sqlite_db_name_from_resource(app)
-        .unwrap_or_else(|| DEFAULT_SQLITE_DB_NAME.to_string())
-}
-
-/// 读取当前配置，供前端 invoke 使用。来源：打包的 settings.json（bundle.resources），否则默认值。
+/// 直接返回 settings.json 的 JSON（缺键已补默认），前端拿到的就是这份对象。
 #[tauri::command]
-pub fn get_config(app: AppHandle) -> AppConfig {
-    let sqlite_db_name = get_sqlite_db_name(&app);
-    AppConfig { sqlite_db_name }
+pub fn get_config(app: AppHandle) -> Value {
+    load_config_json(&app)
+}
+
+/// 供 sidecar 等内部使用
+pub fn get_sqlite_db_name(app: &AppHandle) -> String {
+    load_config_json(app)
+        .get("sqlite_db_name")
+        .and_then(Value::as_str)
+        .filter(|s| !s.trim().is_empty())
+        .unwrap_or("test.db")
+        .to_string()
+}
+
+/// 供 sidecar 等内部使用
+pub fn get_api_port(app: &AppHandle) -> u16 {
+    load_config_json(app)
+        .get("api_port")
+        .and_then(Value::as_u64)
+        .map(|n| n as u16)
+        .unwrap_or(8264)
+}
+
+/// 供 sidecar 等内部使用
+pub fn get_pty_port(app: &AppHandle) -> u16 {
+    load_config_json(app)
+        .get("pty_port")
+        .and_then(Value::as_u64)
+        .map(|n| n as u16)
+        .unwrap_or(8265)
 }

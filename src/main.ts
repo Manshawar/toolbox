@@ -19,18 +19,18 @@ import '@/styles/index.scss';
 const app = createApp(App);
 
 getServerConfig(app).then(async config => {
-  // Tauri 下若有 sidecar 端口则覆盖 request / ptyWs 的 baseURL
-  await applySidecarPorts();
-
   // 路由
   await configMainRouter(app);
 
   // 全局钩子
   configMainGlobalProperties(app);
 
-  // Pinia
+  // Pinia（先装再初始化 Tauri 配置，供 tauriHttp 等从 store 取端口）
   configMainStore(app);
   await initTauriConfig(store);
+
+  // Tauri 下若有 sidecar 端口则覆盖 request / ptyWs 的 baseURL
+  await applySidecarPorts();
 
   // 国际化
   configMainI18n(app, config.locale);

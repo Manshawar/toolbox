@@ -60,8 +60,8 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
             msg
         })?
         .args(["langchain-serve"])
-        .env("VITE_API_PORT", &api_port_s)
-        .env("VITE_PTY_PORT", &pty_port_s);
+        .env("API_PORT", &api_port_s)
+        .env("PTY_PORT", &pty_port_s);
     if let Some(ref sql_path) = sql_db_path_opt {
         sidecar_api = sidecar_api.env("SQLITE_DB_PATH", sql_path).env("DB_PATH", sql_path);
     }
@@ -81,8 +81,8 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
     //         msg
     //     })?
     //     .args(["pty-host"])
-    //     .env("VITE_API_PORT", &api_port_s)
-    //     .env("VITE_PTY_PORT", &pty_port_s);
+    //     .env("API_PORT", &api_port_s)
+    //     .env("PTY_PORT", &pty_port_s);
 
     // let (mut rx_pty, _child_pty) = sidecar_pty.spawn().map_err(|e| {
     //     let msg = format!("启动 core pty-host 失败: {}", e);

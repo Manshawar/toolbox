@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:app": "concurrently \"cross-env TAURI_SKIP_SIDECAR=1 pnpm tauri dev\" \"pnpm -C sidecars run dev\"",
+    "dev:app": "pnpm tauri dev",
+    "dev:app:manual": "concurrently -n api,app \"cross-env API_PORT=8264 PTY_PORT=8265 pnpm -C sidecars/app/langchain-serve run dev\" \"cross-env TAURI_SKIP_SIDECAR=1 pnpm tauri dev\"",
     "dev:tauri": "pnpm run build:sidecar && pnpm tauri dev",
     "build": "vue-tsc --noEmit && vite build",
     "build:sidecar": "pnpm -C sidecars run build",

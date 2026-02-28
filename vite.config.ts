@@ -17,9 +17,9 @@ export default (configEnv: ConfigEnv): UserConfig => {
 
   const isBuild = command === "build";
   const isDev = !isBuild;
-  const apiPort = Number(env.VITE_API_PORT) || 3000;
-  const ptyPort = Number(env.VITE_PTY_PORT) || 3010;
-  // 端口/BaseURL 统一直连后端根地址，不经过代理：开发用 .env 端口，打包后 Tauri 由 applySidecarPorts 覆盖
+  // 开发时默认端口（与 settings.json 一致）；打包后 Tauri 由 get_sidecar_ports / get_config 经 IPC 提供端口
+  const apiPort = 8264;
+  const ptyPort = 8265;
   const apiBaseURL = isDev ? `http://127.0.0.1:${apiPort}` : "";
   const ptyBaseURL = isDev ? `http://127.0.0.1:${ptyPort}` : "";
 

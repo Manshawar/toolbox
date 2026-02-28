@@ -125,9 +125,9 @@ app.get("/db-test", async (c: Context) => {
   }
 });
 
-/** 供 core 或直接运行调用；port 优先 options，否则读 env VITE_API_PORT，为 0 时由系统分配 */
+/** 供 core 或直接运行调用；port 优先 options，否则读 env API_PORT，为 0 时由系统分配 */
 export function run(options?: { port?: number }) {
-  const port = options?.port ?? (Number(process.env.VITE_API_PORT) || 0);
+  const port = options?.port ?? (Number(process.env.API_PORT) || 0);
   const dbPath = getSqliteDbPath();
   console.log("langchain-serve run", port, HOST, dbPath ? `DB=${dbPath}` : "DB=(not set)");
   serve({ fetch: app.fetch, port, hostname: HOST }, (info: { port: number }) => {

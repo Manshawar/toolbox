@@ -2,13 +2,9 @@
 
 interface ImportMetaEnv {
   readonly VITE_DEV_PORT: string;
-  /** 后端 API 端口，开发时与 .env 的 VITE_API_PORT 一致 */
-  readonly VITE_API_PORT: string;
-  /** PTY WebSocket 端口，开发时与 .env 的 VITE_PTY_PORT 一致 */
-  readonly VITE_PTY_PORT: string;
-  /** API baseURL，由 vite.config 注入：开发为 http://127.0.0.1:VITE_API_PORT，打包为空（Tauri 由 applySidecarPorts 覆盖） */
+  /** API baseURL，开发时默认 http://127.0.0.1:8264，打包后由 Tauri IPC get_sidecar_ports / get_config 提供 */
   readonly VITE_API_BASE_URL: string;
-  /** PTY baseURL，由 vite.config 注入：开发为 http://127.0.0.1:VITE_PTY_PORT，打包为空 */
+  /** PTY baseURL，开发时默认 http://127.0.0.1:8265，打包后由 Tauri IPC 提供 */
   readonly VITE_PTY_BASE_URL: string;
 }
 

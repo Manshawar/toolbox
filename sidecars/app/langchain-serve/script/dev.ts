@@ -1,5 +1,6 @@
 /**
  * 开发入口：从 .env 读端口并注入环境变量，然后直接启动当前应用（不 spawn pnpm，避免 ENOENT）
+ * 端口与 settings.json 的 api_port 一致，环境变量名为 API_PORT（非 VITE 前缀）
  */
 import path from "path";
 import fs from "fs";
@@ -10,7 +11,7 @@ function loadEnvPort(): number {
   const rootEnv = path.join(process.cwd(), "../../../.env");
   if (!fs.existsSync(rootEnv)) return DEFAULT_API_PORT;
   const content = fs.readFileSync(rootEnv, "utf-8");
-  const m = content.match(/VITE_API_PORT\s*=\s*(\d+)/);
+  const m = content.match(/API_PORT\s*=\s*(\d+)/);
   if (m) {
     const n = Number(m[1]);
     if (n > 0 && n < 65536) return n;
@@ -29,7 +30,7 @@ function parseDevPort(): number {
 }
 
 const devPort = parseDevPort();
-process.env.VITE_API_PORT = String(devPort);
+process.env.API_PORT = String(devPort);
 (async () => {
   await import("../src/index.ts");
 })();

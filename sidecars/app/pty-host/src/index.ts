@@ -1,6 +1,6 @@
 /**
  * pty-host: PTY + WebSocket 服务，直接启动。
- * 端口由运行时的环境变量 VITE_PTY_PORT 注入（如根目录 pnpm dev:app 时通过 dotenv 加载 .env）。
+ * 端口由运行时的环境变量 PTY_PORT 注入（与 settings.json 的 pty_port 一致）。
  */
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { WebSocketServer, type WebSocket } from "ws";
@@ -59,7 +59,7 @@ wss.on("connection", (ws: WebSocket) => {
   });
 });
 
-const port = Number(process.env.VITE_PTY_PORT) || 8265;
+const port = Number(process.env.PTY_PORT) || 8265;
 server.listen(port, HOST, () => {
   const addr = server.address();
   const p = typeof addr === "object" && addr ? addr.port : 0;
