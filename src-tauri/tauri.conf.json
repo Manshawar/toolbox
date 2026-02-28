@@ -19,7 +19,8 @@
         "height": 720,
         "transparent": true,
         "shadow": false,
-        "decorations": false
+        "decorations": false,
+        "center": true
       }
     ],
     "security": {
