@@ -1,25 +1,14 @@
 /**
- * Tauri 下用 sidecar 端口覆盖 request / ptyWs 的 baseURL。
- * 端口配置由 Vite 负责默认值；此处仅在 Tauri 运行时根据 invoke 结果覆盖。
+ * 用 config 端口覆盖 request / ptyWs 的 baseURL。
+ * 端口来自 get_config（initTauriConfig 已拉取）：若 Tauri 已启动 sidecar 则已含分配端口，否则为 settings.json 端口。
  */
-import { invoke } from "@tauri-apps/api/core";
 import { request, ptyWs } from "@/utils/axios";
+import { store } from "@/store";
+import { useTauriConfigStore } from "@/store/modules/tauriConfig";
 
-type SidecarPortsPayload = { api_port: number; pty_port: number } | null;
-
-async function getSidecarPorts(): Promise<SidecarPortsPayload> {
-  try {
-    const result = await invoke<SidecarPortsPayload>("get_sidecar_ports");
-    return result ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/** 应用启动时调用一次：若在 Tauri 且 sidecar 已启动，则覆盖 axios baseURL */
-export async function applySidecarPorts(): Promise<void> {
-  const ports = await getSidecarPorts();
-  if (!ports) return;
-  request.setBaseURL(`http://127.0.0.1:${ports.api_port}`);
-  ptyWs.setBaseURL(`http://127.0.0.1:${ports.pty_port}`);
+/** 应用启动时调用一次：从 tauriConfig（get_config 一次拉取，已含 sidecar 或文件端口）取端口 */
+export function applySidecarPorts(): void {
+  const { api_port, pty_port } = useTauriConfigStore(store);
+  request.setBaseURL(`http://127.0.0.1:${api_port}`);
+  ptyWs.setBaseURL(`http://127.0.0.1:${pty_port}`);
 }

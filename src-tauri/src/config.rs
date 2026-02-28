@@ -14,7 +14,8 @@ fn default_json() -> Value {
     Value::Object(m)
 }
 
-fn load_config_json(app: &AppHandle) -> Value {
+/// 供 get_config 命令与内部使用；仅读文件，不合并 runtime 端口。
+pub fn load_config_json(app: &AppHandle) -> Value {
     let path = match app.path().resolve(SETTINGS_RESOURCE_PATH, BaseDirectory::Resource) {
         Ok(p) => p,
         Err(_) => return default_json(),
@@ -34,12 +35,6 @@ fn load_config_json(app: &AppHandle) -> Value {
     obj.entry("pty_port")
         .or_insert_with(|| Value::Number(Number::from(8265)));
     Value::Object(obj)
-}
-
-/// 直接返回 settings.json 的 JSON（缺键已补默认），前端拿到的就是这份对象。
-#[tauri::command]
-pub fn get_config(app: AppHandle) -> Value {
-    load_config_json(&app)
 }
 
 /// 供 sidecar 等内部使用

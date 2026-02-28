@@ -1,14 +1,15 @@
-//! 子进程（sidecar）启动与端口管理：检测可用端口，通过环境变量传给 core，通过 invoke 给前端。
+//! 子进程（sidecar）启动与端口管理。
+//! - 未设 TAURI_SKIP_SIDECAR：用 portpicker 查询可用端口并启动 sidecar，端口写入 SidecarPorts，由 get_config 合并后返回前端。
+//! - TAURI_SKIP_SIDECAR=1：不启动 sidecar，get_config 仅返回 settings.json 的端口。
 
 use std::sync::Mutex;
-use tauri::command;
 use tauri::{AppHandle, Manager};
 use tauri_plugin_shell::process::CommandEvent;
 use tauri_plugin_shell::ShellExt;
 
 use crate::config;
 
-/// 应用内保存的 sidecar 端口，供前端 invoke 读取
+/// 应用内保存的 sidecar 端口（仅当由 Tauri 启动 sidecar 时写入），供 get_config 合并后返回前端。
 #[derive(Default)]
 pub struct SidecarPorts {
     pub api_port: Mutex<Option<u16>>,
@@ -24,7 +25,7 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
     eprintln!("[sidecar] 正在启动 core 子进程（需已存在 src-tauri/binaries/core-<target>）...");
     let api_port = portpicker::pick_unused_port().ok_or("无法分配 API 端口")?;
     let pty_port = portpicker::pick_unused_port().ok_or("无法分配 PTY 端口")?;
-    eprintln!("[sidecar] 分配端口 API={} PTY={}", api_port, pty_port);
+    eprintln!("[sidecar] 分配可用端口 API={} PTY={}", api_port, pty_port);
 
     let app_data = app
         .path()
@@ -119,28 +120,8 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
     }
 
     println!(
-        "[sidecar] sidecar接口分配| API: http://127.0.0.1:{} | PTY: http://127.0.0.1:{}",
+        "[sidecar] sidecar 接口 | API: http://127.0.0.1:{} | PTY: http://127.0.0.1:{}",
         api_port, pty_port
     );
     Ok(())
-}
-
-/// 返回当前 sidecar 的 API 与 PTY 端口；若尚未启动则返回 None。
-#[command]
-pub fn get_sidecar_ports(state: tauri::State<SidecarPorts>) -> Result<Option<SidecarPortsPayload>, String> {
-    let api = *state.api_port.lock().map_err(|e| e.to_string())?;
-    let pty = *state.pty_port.lock().map_err(|e| e.to_string())?;
-    match (api, pty) {
-        (Some(a), Some(p)) => Ok(Some(SidecarPortsPayload {
-            api_port: a,
-            pty_port: p,
-        })),
-        _ => Ok(None),
-    }
-}
-
-#[derive(serde::Serialize)]
-pub struct SidecarPortsPayload {
-    pub api_port: u16,
-    pub pty_port: u16,
 }

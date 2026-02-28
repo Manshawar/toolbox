@@ -29,8 +29,8 @@ getServerConfig(app).then(async config => {
   configMainStore(app);
   await initTauriConfig(store);
 
-  // Tauri 下若有 sidecar 端口则覆盖 request / ptyWs 的 baseURL
-  await applySidecarPorts();
+  // 用 config 端口（get_config 已含 sidecar 覆盖）覆盖 request / ptyWs 的 baseURL
+  applySidecarPorts();
 
   // 国际化
   configMainI18n(app, config.locale);
