@@ -6,13 +6,19 @@
 import { Hono, type Context } from "hono";
 import { serve } from "@hono/node-server";
 import Database from "better-sqlite3";
+import fs from "fs-extra";
 const dbPath = process.env.DB_PATH?.trim();
 if (dbPath) {
   const db = new Database(dbPath);
   const result = db.prepare("SELECT * FROM test").all();
   console.log("result", result);
 }
-
+console.log("STORE_PATH", process.env.STORE_PATH);
+const storePath = process.env.STORE_PATH?.trim();
+if (storePath) {
+  const store = await fs.readJson(storePath);
+  console.log("store", store);
+}
 const HOST = "127.0.0.1";
 if (dbPath) console.log("DB_PATH:", dbPath);
 
@@ -21,7 +27,7 @@ app.get("/health", (c: Context) => c.json({ ok: true }));
 
 /** 返回库中所有表名及 test 表数据（需设置 DB_PATH） */
 app.get("/db", (c: Context) => {
-    const db = new Database(dbPath);
+  const db = new Database(dbPath);
   const result = db.prepare("SELECT * FROM test").all();
   console.log("result", result);
   return c.json(result);

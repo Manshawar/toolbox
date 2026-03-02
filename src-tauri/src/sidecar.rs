@@ -1,6 +1,9 @@
 //! 子进程（sidecar）启动与端口管理。
-//! - 未设 TAURI_SKIP_SIDECAR：用 portpicker 查询可用端口并启动 sidecar，端口写入 SidecarPorts，由 get_config 合并后返回前端。
-//! - TAURI_SKIP_SIDECAR=1：不启动 sidecar，在 sidecars/.env 下生成与注入一致的环境变量，供手动启动子进程时读取。
+//!
+//! - 未设 TAURI_SKIP_SIDECAR：用 portpicker 分配端口并启动 sidecar，端口写入 SidecarPorts，由 get_config 合并后返回前端。
+//! - TAURI_SKIP_SIDECAR=1：不启动 sidecar，在 sidecars/.env 写入与注入一致的环境变量，供手动启动子进程时读取。
+//!
+//! 侧车环境变量与 sidecars/.env 内容由 [build_sidecar_env] 统一生成，保证一致。
 
 use std::fs;
 use std::io::Write;
@@ -18,41 +21,81 @@ pub struct SidecarPorts {
     pub pty_port: Mutex<Option<u16>>,
 }
 
-/// 是否为开发环境（debug 构建视为开发；仅开发时传 SQL 相关 env，避免打包后 sidecar 依赖 WASM）
+/// 是否为开发环境（debug 构建视为开发；仅开发时传 SQL/Store 相关 env，避免打包后 sidecar 依赖 WASM）
 fn is_dev() -> bool {
     cfg!(debug_assertions)
 }
 
+/// 侧车环境变量键值对，与 sidecars/.env 内容一致。
+/// 包含：API_PORT、PTY_PORT；开发环境下增加 SQLITE_DB_PATH、DB_PATH、STORE_PATH（与 app.db 同目录）。
+pub fn build_sidecar_env(app: &AppHandle, api_port: u16, pty_port: u16) -> Vec<(String, String)> {
+    let mut env = vec![
+        ("API_PORT".to_string(), api_port.to_string()),
+        ("PTY_PORT".to_string(), pty_port.to_string()),
+    ];
+
+    if is_dev() {
+        if let Ok(app_data) = app.path().app_data_dir() {
+            let sql_name = config::get_sqlite_db_name(app);
+            let store_name = config::get_store_name(app);
+            let db_path = app_data.join(&sql_name);
+            let store_path = app_data.join(&store_name);
+            env.push((
+                "SQLITE_DB_PATH".to_string(),
+                db_path.to_string_lossy().to_string(),
+            ));
+            env.push(("DB_PATH".to_string(), db_path.to_string_lossy().to_string()));
+            env.push((
+                "STORE_PATH".to_string(),
+                store_path.to_string_lossy().to_string(),
+            ));
+        }
+    }
+
+    env
+}
+
+/// 将环境变量键值对写成 .env 文件行（KEY=VALUE）
+fn env_to_dotenv_lines(env: &[(String, String)]) -> String {
+    env.iter()
+        .map(|(k, v)| format!("{}={}", k, v))
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// 解析 sidecars 目录路径（项目根/sidecars 或当前目录下 sidecars，且存在 package.json）
+fn sidecars_dir() -> Option<std::path::PathBuf> {
+    let cwd = std::env::current_dir().ok()?;
+    let parent_sidecars = cwd.parent().map(|p| p.join("sidecars"));
+    if parent_sidecars.as_ref().is_some_and(|p| p.join("package.json").exists()) {
+        return parent_sidecars;
+    }
+    let cur_sidecars = cwd.join("sidecars");
+    if cur_sidecars.join("package.json").exists() {
+        return Some(cur_sidecars);
+    }
+    Some(cur_sidecars)
+}
+
 pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
     eprintln!("[sidecar] 正在启动 core 子进程（需已存在 src-tauri/binaries/core-<target>）...");
+
     let api_port = portpicker::pick_unused_port().ok_or("无法分配 API 端口")?;
     let pty_port = portpicker::pick_unused_port().ok_or("无法分配 PTY 端口")?;
     eprintln!("[sidecar] 分配可用端口 API={} PTY={}", api_port, pty_port);
 
-    let app_data = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| format!("无法获取 app_data_dir: {}", e))?;
+    let env_vars = build_sidecar_env(app, api_port, pty_port);
+    if is_dev() {
+        if let Some((_, ref path)) = env_vars.iter().find(|(k, _)| k == "STORE_PATH") {
+            println!("[sidecar] dev: STORE_PATH={}", path);
+        }
+        if let Some((_, ref path)) = env_vars.iter().find(|(k, _)| k == "SQLITE_DB_PATH") {
+            println!("[sidecar] dev: SQLITE_DB_PATH={}", path);
+        }
+    }
 
-    // 仅开发环境设置 SQL 库路径，供 langchain-serve 使用；生产不设则 Node 侧 /db-test 返回 503
-    // 库文件名从 config（resource/settings.json）读取，与前端一致
-    let sql_db_path_opt: Option<String> = if is_dev() {
-        let sql_db_filename = config::get_sqlite_db_name(app);
-        let p = app_data.join(&sql_db_filename);
-        let s = p.to_string_lossy().to_string();
-        println!("[sidecar] dev: SQLITE_DB_PATH={}", p.display());
-        Some(s)
-    } else {
-        eprintln!("[sidecar] prod: 不设置 SQL 环境变量");
-        None
-    };
-
-    let shell = app.shell();
-    let api_port_s = api_port.to_string();
-    let pty_port_s = pty_port.to_string();
-
-    // 1. 启动 langchain-serve（开发环境才传 SQLITE_DB_PATH / DB_PATH）
-    let mut sidecar_api = shell
+    let mut sidecar_api = app
+        .shell()
         .sidecar("core")
         .map_err(|e| {
             let msg = format!(
@@ -62,11 +105,10 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
             eprintln!("[sidecar] {}", msg);
             msg
         })?
-        .args(["langchain-serve"])
-        .env("API_PORT", &api_port_s)
-        .env("PTY_PORT", &pty_port_s);
-    if let Some(ref sql_path) = sql_db_path_opt {
-        sidecar_api = sidecar_api.env("SQLITE_DB_PATH", sql_path).env("DB_PATH", sql_path);
+        .args(["langchain-serve"]);
+
+    for (k, v) in &env_vars {
+        sidecar_api = sidecar_api.env(k, v);
     }
 
     let (mut rx_api, _child_api) = sidecar_api.spawn().map_err(|e| {
@@ -75,25 +117,6 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
         msg
     })?;
 
-    // 2. 启动 pty-host（暂时注释，后期再启用）
-    // let sidecar_pty = shell
-    //     .sidecar("core")
-    //     .map_err(|e| {
-    //         let msg = format!("创建 sidecar core 失败: {}", e);
-    //         eprintln!("[sidecar] {}", msg);
-    //         msg
-    //     })?
-    //     .args(["pty-host"])
-    //     .env("API_PORT", &api_port_s)
-    //     .env("PTY_PORT", &pty_port_s);
-
-    // let (mut rx_pty, _child_pty) = sidecar_pty.spawn().map_err(|e| {
-    //     let msg = format!("启动 core pty-host 失败: {}", e);
-    //     eprintln!("[sidecar] {}", msg);
-    //     msg
-    // })?;
-
-    // 转发 core 子进程的 stdout/stderr 到当前终端（仅 langchain-serve；pty-host 已注释）
     tauri::async_runtime::spawn(async move {
         while let Some(event) = rx_api.recv().await {
             match event {
@@ -104,17 +127,6 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
             }
         }
     });
-    // pty-host 已注释，后期再启用
-    // tauri::async_runtime::spawn(async move {
-    //     while let Some(event) = rx_pty.recv().await {
-    //         match event {
-    //             CommandEvent::Stdout(line) => print!("{}", String::from_utf8_lossy(&line)),
-    //             CommandEvent::Stderr(line) => eprint!("{}", String::from_utf8_lossy(&line)),
-    //             CommandEvent::Error(e) => eprintln!("[core pty-host 错误] {}", e),
-    //             _ => {}
-    //         }
-    //     }
-    // });
 
     if let Some(state) = app.try_state::<SidecarPorts>() {
         *state.api_port.lock().unwrap() = Some(api_port);
@@ -128,56 +140,31 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// 当 TAURI_SKIP_SIDECAR=1 时调用：在项目根下的 sidecars/.env 写入与侧车注入一致的环境变量，供手动启动 langchain-serve 时读取。
-/// 路径为 src-tauri 上层（项目根）/sidecars/.env，与 sidecars/package.json 同级。
+/// 当 TAURI_SKIP_SIDECAR=1 时调用：在 sidecars/.env 写入与 [build_sidecar_env] 一致的环境变量，供手动启动子进程时读取。
 pub fn write_sidecar_env_when_skip(app: &AppHandle) {
-    let cwd = match std::env::current_dir() {
-        Ok(p) => p,
-        Err(e) => {
-            eprintln!("[sidecar] 无法获取当前目录，跳过写入 .env: {}", e);
+    let sidecars_dir = match sidecars_dir() {
+        Some(d) => d,
+        None => {
+            eprintln!("[sidecar] 无法解析 sidecars 目录，跳过写入 .env");
             return;
         }
     };
-    let sidecars_dir = cwd
-        .parent()
-        .map(|p| p.join("sidecars"))
-        .filter(|p| p.join("package.json").exists())
-        .or_else(|| {
-            let s = cwd.join("sidecars");
-            if s.join("package.json").exists() {
-                Some(s)
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| cwd.join("sidecars"));
-    let env_path = sidecars_dir.join(".env");
 
     let api_port = config::get_api_port(app);
     let pty_port = config::get_pty_port(app);
-
-    let mut lines = vec![
-        format!("API_PORT={}", api_port),
-        format!("PTY_PORT={}", pty_port),
-    ];
-
-    if is_dev() {
-        if let Ok(app_data) = app.path().app_data_dir() {
-            let sql_db_name = config::get_sqlite_db_name(app);
-            let db_path = app_data.join(&sql_db_name);
-            let db_path_s = db_path.to_string_lossy();
-            lines.push(format!("SQLITE_DB_PATH={}", db_path_s));
-            lines.push(format!("DB_PATH={}", db_path_s));
-        }
-    }
+    let env_vars = build_sidecar_env(app, api_port, pty_port);
+    let content = env_to_dotenv_lines(&env_vars);
+    let env_path = sidecars_dir.join(".env");
 
     if let Err(e) = fs::create_dir_all(&sidecars_dir) {
         eprintln!("[sidecar] 创建 sidecars 目录失败: {}", e);
         return;
     }
-    let content = lines.join("\n");
     match fs::File::create(&env_path).and_then(|mut f| f.write_all(content.as_bytes())) {
-        Ok(()) => println!("[sidecar] 已写入 {}（TAURI_SKIP_SIDECAR=1，供手动启动子进程读取）", env_path.display()),
+        Ok(()) => println!(
+            "[sidecar] 已写入 {}（TAURI_SKIP_SIDECAR=1，供手动启动子进程读取）",
+            env_path.display()
+        ),
         Err(e) => eprintln!("[sidecar] 写入 .env 失败: {}", e),
     }
 }
