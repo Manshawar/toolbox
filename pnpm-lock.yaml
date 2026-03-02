@@ -215,7 +215,7 @@ importers:
         specifier: ^1.13.0
         version: 1.19.9(hono@4.12.3)
       better-sqlite3:
-        specifier: ^12.1.0
+        specifier: ^12.6.2
         version: 12.6.2
       drizzle-orm:
         specifier: ^0.36.0

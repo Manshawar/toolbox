@@ -6,7 +6,7 @@
 import { Hono, type Context } from "hono";
 import { serve } from "@hono/node-server";
 import Database from "better-sqlite3";
-import fs from "fs-extra";
+import fs from "fs/promises";
 const dbPath = process.env.DB_PATH?.trim();
 if (dbPath) {
   const db = new Database(dbPath);
@@ -15,10 +15,7 @@ if (dbPath) {
 }
 console.log("STORE_PATH", process.env.STORE_PATH);
 const storePath = process.env.STORE_PATH?.trim();
-if (storePath) {
-  const store = await fs.readJson(storePath);
-  console.log("store", store);
-}
+
 const HOST = "127.0.0.1";
 if (dbPath) console.log("DB_PATH:", dbPath);
 
@@ -32,11 +29,18 @@ app.get("/db", (c: Context) => {
   console.log("result", result);
   return c.json(result);
 });
-
+async function readStore() {
+  if (storePath) {
+    const store = await fs.readFile(storePath, "utf-8");
+    return JSON.parse(store);
+  }
+}
 /** 供 core 或直接运行调用；port 优先 options，否则读 env API_PORT，缺省 8264 */
-export function run(options?: { port?: number }) {
+export async function run(options?: { port?: number }) {
   const port = options?.port ?? (Number(process.env.API_PORT) || 8264);
   console.log("langchain-serve run", port, HOST);
+  const store = await readStore();
+  console.log("store", store);
   serve({ fetch: app.fetch, port, hostname: HOST }, (info: { port: number }) => {
     const base = `http://${HOST}:${info.port}`;
     console.log(
