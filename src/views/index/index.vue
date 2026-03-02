@@ -52,18 +52,8 @@ async function checkAllApps() {
   if (appIds.length === 0) return;
 
   try {
-    const result = await invoke<Record<string, AppInstallInfo>>(
-      'check_apps_installed',
-      { appIds },
-    );
-    console.log('[checkAllApps] result:', result);
-    for (const app of allApps) {
-      const info = result[app.id];
-      if (info) {
-        app.installed = info.installed;
-        app.version = info.version;
-      }
-    }
+
+
   } catch (err) {
     console.error('[checkAllApps] invoke failed:', err);
   }

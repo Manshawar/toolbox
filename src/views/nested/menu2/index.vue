@@ -4,6 +4,8 @@
       <el-button @click="testHandler">测试链接</el-button>
       <el-button @click="insertDataHandler">插入数据</el-button>
       <el-button @click="queryDataHandler">查询数据</el-button>
+      <el-button @click="setConfigHandler">测试tauriStore配置</el-button>
+      <el-button @click="getConfigHandler">获取tauriStore配置</el-button>
     </div>
     <div v-if="resultLabel" class="mt-4">
       <div class="mb-1 text-sm text-gray-500">{{ resultLabel }}</div>
@@ -16,6 +18,7 @@
 import { ref } from 'vue';
 import { testLink } from '@/server/test';
 import { insertData, queryData } from '@/sql';
+import { setConfig, getConfig } from '@/tauriStore';
 
 const resultLabel = ref('');
 const result = ref('');
@@ -51,4 +54,16 @@ const queryDataHandler = async () => {
     setResult('查询数据', { error: String(e) });
   }
 };
+const setConfigHandler = async () => {
+  await setConfig({
+    sqlite_db_name: 'test.db',
+    api_port: 8264,
+    pty_port: 8265,
+  });
+};
+const getConfigHandler = async () => {
+  const res = await getConfig();
+  setResult('获取配置', res);
+};
+
 </script>

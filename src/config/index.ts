@@ -1,5 +1,5 @@
 import type { App } from 'vue';
-import { getConfigInfo } from '@/server/config';
+import { useAppStoreHook } from '@/store/modules/app';
 import type { AppConfig } from '@/store/types';
 import { configTheme } from '@/utils/theme/transformTheme';
 
@@ -9,22 +9,13 @@ export function getConfig(): AppConfig {
   return config;
 }
 
-// 延迟进入vue，显示loding页
+/** 延迟进入 Vue：从 Pinia app store 取配置（持久化），缺省时从 public/serverConfig.json 拉取 */
 export async function getServerConfig(app: App): Promise<AppConfig> {
-  const appConfigMode = localStorage.getItem('appConfigMode');
-  if (appConfigMode) {
-    config = JSON.parse(appConfigMode);
-  } else {
-    const res = await getConfigInfo();
-    if (res) {
-      config = res.data;
-      localStorage.setItem('appConfigMode', JSON.stringify(config));
-    } else {
-      throw new Error(
-        `\npublic文件夹下无法查找到serverConfig配置文件\nUnable to find serverconfig configuration file under public folder`,
-      );
-    }
+  const appStore = useAppStoreHook();
+  if (!appStore.hasConfig) {
+    await appStore.loadServerConfig();
   }
+  config = appStore.getAppConfigMode;
   configTheme(config);
   app.config.globalProperties.$config = getConfig();
   return config;
