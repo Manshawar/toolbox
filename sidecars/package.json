@@ -18,7 +18,7 @@
       "dist/index.js"
     ],
     "assets": [
-      "../node_modules/.pnpm/better-sqlite3@12.6.2/node_modules/better-sqlite3/build/**/*.node"
+      "../node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3/build/**"
     ]
   },
   "dependencies": {

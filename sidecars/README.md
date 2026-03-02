@@ -86,6 +86,29 @@ sidecars/
 
 ## 依赖与 pkg 注意点
 
-- **node-pty、ws、better-sqlite3** 在 tsup 中为 `external`，不打进 dist 的 bundle；pkg 通过 `package.json` 的 `pkg.assets` 将 `node_modules/node-pty/**`、`node_modules/ws/**`、`node_modules/better-sqlite3/**` 以及 `dist/*.js` 等打进二进制，运行时从 pkg 快照内解析。
+- **node-pty、ws、better-sqlite3** 在 tsup 中为 `external`，不打进 dist 的 bundle；pkg 通过 `package.json` 的 `pkg.assets` 将所需文件打进二进制，运行时从 pkg 快照内解析。
 - **Node 版本**：tsup 的 target 为 node24；pkg 使用 `@yao-pkg/pkg`，target 为 `node24-<os>-<arch>`，与当前开发环境一致即可。
-- better-sqlite3 建议使用 **v12.x**（Node 24 有 prebuild，无需本机 Python/node-gyp）。详见根目录 `doc/sidecar-architecture.md` 中「better-sqlite3 rebuild 失败」一节。
+
+---
+
+## better-sqlite3 与 pkg（必读）
+
+`require('better-sqlite3')` 时，Node 会解析到 **pnpm 目录** 下的路径（如 `node_modules/.pnpm/better-sqlite3@12.6.2/.../build/better_sqlite3.node`）并对该路径做 `stat`。若该路径未被 pkg 打进快照，运行时报错：`File or directory '.../better_sqlite3.node' was not included into executable`。
+
+**因此必须在 `package.json` 的 `pkg.assets` 里显式包含 better-sqlite3 的 native 产物：**
+
+```json
+"pkg": {
+  "assets": [
+    "../node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3/build/**"
+  ]
+}
+```
+
+- 路径相对于 **sidecars 目录**（pkg 的 cwd）；`../node_modules` 即 monorepo 根下的 `node_modules/.pnpm/`。
+- 使用 **`better-sqlite3@*`** 通配版本号，避免写死 `@12.6.2`：升级 better-sqlite3 后无需改配置。若 pkg 或 pnpm 行为导致该 glob 匹配不到，可临时改为写死版本路径再排查。
+- 只包含 `build/**` 即可（内含 `Release/better_sqlite3.node` 或当前平台的 .node），无需整包。
+
+**升级 better-sqlite3 后**：若使用上述通配写法，一般无需改动；若曾改为写死版本路径，记得把 `pkg.assets` 里的版本号改成新版本，或改回 `better-sqlite3@*`。
+
+better-sqlite3 建议使用 **v12.x**（Node 24 有 prebuild）。详见根目录 `doc/sidecar-architecture.md` 中「better-sqlite3 rebuild 失败」一节。
