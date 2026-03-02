@@ -14,14 +14,11 @@
   "author": "",
   "license": "ISC",
   "pkg": {
+    "scripts": [
+      "dist/index.js"
+    ],
     "assets": [
-      "node_modules/node-pty/**/*",
-      "node_modules/ws/**/*",
-      "node_modules/better-sqlite3/**/*",
-      "dist/langchain-serve.js",
-      "dist/pty-host.js",
-      "dist/langchain-serve.js.map",
-      "dist/pty-host.js.map"
+      "../node_modules/.pnpm/better-sqlite3@12.6.2/node_modules/better-sqlite3/build/**/*.node"
     ]
   },
   "dependencies": {

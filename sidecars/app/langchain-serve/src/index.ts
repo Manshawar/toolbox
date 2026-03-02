@@ -20,9 +20,12 @@ const app = new Hono();
 app.get("/health", (c: Context) => c.json({ ok: true }));
 
 /** 返回库中所有表名及 test 表数据（需设置 DB_PATH） */
-// app.get("/db", (c: Context) => {
-
-// });
+app.get("/db", (c: Context) => {
+    const db = new Database(dbPath);
+  const result = db.prepare("SELECT * FROM test").all();
+  console.log("result", result);
+  return c.json(result);
+});
 
 /** 供 core 或直接运行调用；port 优先 options，否则读 env API_PORT，缺省 8264 */
 export function run(options?: { port?: number }) {
