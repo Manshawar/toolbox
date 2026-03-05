@@ -15,6 +15,9 @@
     {
       "name": "src-tauri",
       "path": "src-tauri"
+    },
+    {
+      "path": "../../../utils/cli"
     }
   ],
   "settings": {}
