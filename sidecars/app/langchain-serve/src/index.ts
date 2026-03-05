@@ -1,50 +1,26 @@
 /**
- * langchain-serve: Hono API 服务
- * 环境变量来源：Tauri 侧车启动时由 Rust 注入（pkg 打包后）；或通过 script/dev.ts 用 dotenv 加载 sidecars/.env 后启动（开发）。
- * 数据库：better-sqlite3 + Drizzle schema，封装在 src/db.ts；仅在 DB_PATH 存在时懒加载，避免无 DB 环境下加载原生绑定报错。
+ * langchain-serve 入口：创建 Hono、注册路由、启动服务
  */
-import { Hono, type Context } from "hono";
+import { Hono } from "hono";
 import { serve } from "@hono/node-server";
-import Database from "better-sqlite3";
-import fs from "fs/promises";
-const dbPath = process.env.DB_PATH?.trim();
-if (dbPath) {
-  const db = new Database(dbPath);
-  const result = db.prepare("SELECT * FROM test").all();
-  console.log("result", result);
-}
-console.log("STORE_PATH", process.env.STORE_PATH);
-const storePath = process.env.STORE_PATH?.trim();
-
-const HOST = "127.0.0.1";
-if (dbPath) console.log("DB_PATH:", dbPath);
+import { registerRoutes } from "./routes";
+import { getApiPort, getHost, logConfig } from "./config/env";
+import { readStore } from "./services/storeService";
 
 const app = new Hono();
-app.get("/health", (c: Context) => c.json({ ok: true }));
+registerRoutes(app);
 
-/** 返回库中所有表名及 test 表数据（需设置 DB_PATH） */
-app.get("/db", (c: Context) => {
-  const db = new Database(dbPath);
-  const result = db.prepare("SELECT * FROM test").all();
-  console.log("result", result);
-  return c.json(result);
-});
-async function readStore() {
-  if (storePath) {
-    const store = await fs.readFile(storePath, "utf-8");
-    return JSON.parse(store);
-  }
-}
-/** 供 core 或直接运行调用；port 优先 options，否则读 env API_PORT，缺省 8264 */
-export async function run(options?: { port?: number }) {
-  const port = options?.port ?? (Number(process.env.API_PORT) || 8264);
-  console.log("langchain-serve run", port, HOST);
+export async function run(options?: { port?: number }): Promise<void> {
+  const port = options?.port ?? getApiPort();
+  const host = getHost();
+  logConfig();
   const store = await readStore();
-  console.log("store", store);
-  serve({ fetch: app.fetch, port, hostname: HOST }, (info: { port: number }) => {
-    const base = `http://${HOST}:${info.port}`;
+  if (store != null) console.log("store", store);
+
+  serve({ fetch: app.fetch, port, hostname: host }, (info: { port: number }) => {
+    const base = `http://${host}:${info.port}`;
     console.log(
-      `API_PORT=${info.port} | 接口地址: ${base} | 健康检查: ${base}/health | DB: ${base}/db`
+      `langchain-serve run | API_PORT=${info.port} | ${base} | health: ${base}/health | db: ${base}/db`
     );
   });
 }

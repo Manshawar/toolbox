@@ -5,7 +5,7 @@
   "description": "Hono API 服务，供 core 并入",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "tsx script/dev.ts --watch src/index.ts"
+    "dev": "tsx watch script/dev.ts"
   },
   "keywords": [],
   "author": "",
