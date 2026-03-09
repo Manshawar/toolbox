@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { registerRoutes } from "./routes";
 import { getApiPort, getHost, logConfig } from "./config/env";
-import { storeService } from "./services/storeService";
+import {  startWatchingStore } from "./services/storeService";
 
 const app = new Hono();
 registerRoutes(app);
@@ -14,14 +14,11 @@ export async function run(options?: { port?: number }): Promise<void> {
   const port = options?.port ?? getApiPort();
   const host = getHost();
   logConfig();
-  storeService.startWatching();
-  const store = storeService.get();
-  if (store != null) console.log("store", store);
-
+  startWatchingStore();
   serve({ fetch: app.fetch, port, hostname: host }, (info: { port: number }) => {
     const base = `http://${host}:${info.port}`;
     console.log(
-      `langchain-serve run | API_PORT=${info.port} | ${base} | health: ${base}/health | db: ${base}/db`
+      `langchain-serve run | API_PORT=${info.port} | ${base} | health: ${base}/health | db: ${base}/test/db | store: ${base}/test/store`
     );
   });
 }
