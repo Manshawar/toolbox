@@ -75,12 +75,12 @@ pub fn get_pty_port(app: &AppHandle) -> u16 {
         .unwrap_or(8265)
 }
 
-/// 供 sidecar 等内部使用；与 app.db 同目录的 Tauri Store 文件名。配置为空时 fallback 为 store.bin。
+/// 供 sidecar 等内部使用；与 app.db 同目录的 Tauri Store 文件名。配置为空时 fallback 为 store.json。
 pub fn get_store_name(app: &AppHandle) -> String {
     load_config_json(app)
         .get("store_name")
         .and_then(Value::as_str)
         .filter(|s| !s.trim().is_empty())
         .map(String::from)
-        .unwrap_or_else(|| "store.bin".to_string())
+        .unwrap_or_else(|| "store.json".to_string())
 }

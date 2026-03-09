@@ -1,7 +1,7 @@
 //! 子进程（sidecar）启动与端口管理。
 //!
 //! - 未设 TAURI_SKIP_SIDECAR：用 portpicker 分配端口并启动 sidecar，端口写入 SidecarPorts，由 get_config 合并后返回前端。
-//! - TAURI_SKIP_SIDECAR=1：不启动 sidecar，在 sidecars/.env 写入与注入一致的环境变量，供手动启动子进程时读取。
+//! - TAURI_SKIP_SIDECAR=1：不启动 sidecar，在 sidecars/.env 写入与注入一致的环境变量，跳过pkg打包。
 //!
 //! 侧车环境变量与 sidecars/.env 内容由 [build_sidecar_env] 统一生成，保证一致。
 
@@ -21,35 +21,37 @@ pub struct SidecarPorts {
     pub pty_port: Mutex<Option<u16>>,
 }
 
-/// 是否为开发环境（debug 构建视为开发；仅开发时传 SQL/Store 相关 env，避免打包后 sidecar 依赖 WASM）
+/// 是否为开发环境（仅用于控制是否打印路径日志）
 fn is_dev() -> bool {
     cfg!(debug_assertions)
 }
 
 /// 侧车环境变量键值对，与 sidecars/.env 内容一致。
-/// 包含：API_PORT、PTY_PORT；开发环境下增加 SQLITE_DB_PATH、DB_PATH、STORE_PATH（与 app.db 同目录）。
+/// 包含：API_PORT、PTY_PORT；若有 app_data 目录则增加 APP_DATA_DIR、SQLITE_DB_PATH、DB_PATH、STORE_PATH。
 pub fn build_sidecar_env(app: &AppHandle, api_port: u16, pty_port: u16) -> Vec<(String, String)> {
     let mut env = vec![
         ("API_PORT".to_string(), api_port.to_string()),
         ("PTY_PORT".to_string(), pty_port.to_string()),
     ];
 
-    if is_dev() {
-        if let Ok(app_data) = app.path().app_data_dir() {
-            let sql_name = config::get_sqlite_db_name(app);
-            let store_name = config::get_store_name(app);
-            let db_path = app_data.join(&sql_name);
-            let store_path = app_data.join(&store_name);
-            env.push((
-                "SQLITE_DB_PATH".to_string(),
-                db_path.to_string_lossy().to_string(),
-            ));
-            env.push(("DB_PATH".to_string(), db_path.to_string_lossy().to_string()));
-            env.push((
-                "STORE_PATH".to_string(),
-                store_path.to_string_lossy().to_string(),
-            ));
-        }
+    if let Ok(app_data) = app.path().app_data_dir() {
+        let sql_name = config::get_sqlite_db_name(app);
+        let store_name = config::get_store_name(app);
+        let db_path = app_data.join(&sql_name);
+        let store_path = app_data.join(&store_name);
+        env.push((
+            "APP_DATA_DIR".to_string(),
+            app_data.to_string_lossy().to_string(),
+        ));
+        env.push((
+            "SQLITE_DB_PATH".to_string(),
+            db_path.to_string_lossy().to_string(),
+        ));
+        env.push(("DB_PATH".to_string(), db_path.to_string_lossy().to_string()));
+        env.push((
+            "STORE_PATH".to_string(),
+            store_path.to_string_lossy().to_string(),
+        ));
     }
 
     env
@@ -86,6 +88,9 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
 
     let env_vars = build_sidecar_env(app, api_port, pty_port);
     if is_dev() {
+        if let Some((_, ref path)) = env_vars.iter().find(|(k, _)| k == "APP_DATA_DIR") {
+            println!("[sidecar] dev: APP_DATA_DIR={}", path);
+        }
         if let Some((_, ref path)) = env_vars.iter().find(|(k, _)| k == "STORE_PATH") {
             println!("[sidecar] dev: STORE_PATH={}", path);
         }
@@ -140,7 +145,7 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-/// 当 TAURI_SKIP_SIDECAR=1 时调用：在 sidecars/.env 写入与 [build_sidecar_env] 一致的环境变量，供手动启动子进程时读取。
+/// 当 TAURI_SKIP_SIDECAR=1 时调用：在 sidecars/.env 写入与 [build_sidecar_env] 一致的环境变量，跳过pkg打包。
 pub fn write_sidecar_env_when_skip(app: &AppHandle) {
     let sidecars_dir = match sidecars_dir() {
         Some(d) => d,
@@ -162,7 +167,7 @@ pub fn write_sidecar_env_when_skip(app: &AppHandle) {
     }
     match fs::File::create(&env_path).and_then(|mut f| f.write_all(content.as_bytes())) {
         Ok(()) => println!(
-            "[sidecar] 已写入 {}（TAURI_SKIP_SIDECAR=1，供手动启动子进程读取）",
+            "[sidecar] 已写入 {}（TAURI_SKIP_SIDECAR=1，跳过pkg打包）",
             env_path.display()
         ),
         Err(e) => eprintln!("[sidecar] 写入 .env 失败: {}", e),
