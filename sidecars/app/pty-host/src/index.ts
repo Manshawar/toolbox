@@ -5,9 +5,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "http";
 import { WebSocketServer, type WebSocket } from "ws";
 import * as pty from "node-pty";
-import { consola } from "consola";
 
-const log = consola.withTag("pty-host");
 const HOST = "127.0.0.1";
 
 const server = createServer((req: IncomingMessage, res: ServerResponse) => {
