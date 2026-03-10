@@ -1,5 +1,6 @@
 import path from "node:path";
 import { watch } from "node:fs";
+import { logger } from "./logger";
 
 const DEBOUNCE_MS = 150;
 
@@ -21,8 +22,10 @@ export function createWatchedFileCache(
   async function load(): Promise<void> {
     try {
       cached = await readFile(filePath);
-    } catch {
+      logger.debug({ filePath, hasData: cached != null }, "watchedFileCache: loaded");
+    } catch (err) {
       cached = null;
+      logger.warn({ err, filePath }, "watchedFileCache: load failed");
     }
   }
 
@@ -39,9 +42,13 @@ export function createWatchedFileCache(
     startWatching() {
       if (watcher) return;
       void load();
-      watcher = watch(dir, { recursive: false }, (_, filename) => {
-        if (filename === basename) reloadDebounced();
+      watcher = watch(dir, { recursive: false }, (evt, filename) => {
+        if (filename === basename) {
+          logger.debug({ filePath, evt }, "watchedFileCache: file change, reload scheduled");
+          reloadDebounced();
+        }
       });
+      logger.debug({ filePath: dir, basename }, "watchedFileCache: watch started");
     },
   };
 }

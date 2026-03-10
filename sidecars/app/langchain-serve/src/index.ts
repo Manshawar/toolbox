@@ -5,8 +5,9 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { registerRoutes } from "./routes";
 import { getApiPort, getHost, logConfig } from "./config/env";
-import {  startWatchingStore } from "./services/storeService";
+import { startWatchingStore } from "./services/storeService";
 import { swaggerUI } from "@hono/swagger-ui";
+import { logger } from "./utils/logger";
 
 const app = new Hono();
 registerRoutes(app);
@@ -14,18 +15,23 @@ registerRoutes(app);
 export async function run(options?: { port?: number }): Promise<void> {
   const port = options?.port ?? getApiPort();
   const host = getHost();
-  app.get('/ui', swaggerUI({ url: '/doc' }))
+  app.get("/ui", swaggerUI({ url: "/doc" }));
 
   logConfig();
   startWatchingStore();
+
+  logger.info({ host, port }, "langchain-serve starting");
+
   serve({ fetch: app.fetch, port, hostname: host }, (info: { port: number }) => {
     const base = `http://${host}:${info.port}`;
-    console.log(
-      `langchain-serve run | API_PORT=${info.port} | ${base} \n 
-        swagger: ${base}/ui
-      `
+    logger.info(
+      { API_PORT: info.port, base, swagger: `${base}/ui` },
+      "langchain-serve listening"
     );
   });
 }
 
-run();
+run().catch((err) => {
+  logger.error(err, "langchain-serve failed to start");
+  process.exitCode = 1;
+});

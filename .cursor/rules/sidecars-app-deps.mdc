@@ -1,0 +1,20 @@
+---
+description: sidecars/app 下子项目依赖由父级 sidecars 统一管理
+globs: sidecars/app/**/*
+alwaysApply: false
+---
+
+# sidecars/app 依赖约定
+
+`sidecars/app/` 下的子项目（如 `langchain-serve`）**不单独维护依赖**，所有运行时依赖都在**父级** `sidecars/package.json` 中声明。
+
+## 约定
+
+- **安装新依赖**：在 **sidecars 根目录** 的 `package.json` 里添加，并执行 `pnpm install`（在 sidecars 下执行）。
+- **不要**在 `sidecars/app/<子项目>/package.json` 里添加 `dependencies`，除非是为了解决类型解析/IDE 报错而显式声明（如 pino），且与父级版本一致。
+- 构建与打包由 sidecars 根目录的 tsup/脚本统一处理，会从 sidecars 的 `node_modules` 解析依赖。
+
+## 示例
+
+- 正确：在 `sidecars/package.json` 的 `dependencies` 中加入 `"pino": "^9.5.0"`。
+- 错误：在 `sidecars/app/langchain-serve/package.json` 里单独维护一整套依赖列表（与父级重复）。
