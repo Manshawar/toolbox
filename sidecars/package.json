@@ -8,7 +8,7 @@
     "build:mac": "SIDECAR_TARGET=aarch64-apple-darwin tsup",
     "build:win": "SIDECAR_TARGET=x86_64-pc-windows-msvc tsup",
     "build:linux": "SIDECAR_TARGET=x86_64-unknown-linux-gnu tsup",
-    "dev": "turbo run dev --filter=langchain-serve --filter=pty-host"
+    "dev": "cd app/langchain-serve && pnpm dev && cd ../pty-host && pnpm dev"
   },
   "keywords": [],
   "author": "",
