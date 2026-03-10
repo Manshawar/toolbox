@@ -134,8 +134,12 @@ export default defineConfig({
   platform: "node",
   target: "node24",
   treeshake: true,
-  external: ["node-pty", "ws", "better-sqlite3"],
-  esbuildOptions(options) {
+  // external: ["node-pty", "ws", "better-sqlite3"],
+  // // 强制把其余依赖打进 bundle，否则 pkg 打单文件时找不到 @hono/swagger-ui 等
+  // noExternal: [/.*/],
+  esbuildOptions(options, context) {
+    // 从 sidecars 目录解析 node_modules，保证 monorepo 下能找到依赖
+    options.absWorkingDir = __dirname;
     options.banner = {
       js: "#!/usr/bin/env node",
     };

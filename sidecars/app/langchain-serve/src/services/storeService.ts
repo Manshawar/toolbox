@@ -3,17 +3,18 @@ import fse from "fs-extra";
 import { getStorePath } from "../config/env";
 import { WatchedFileCache } from "../utils/watchedFileCache";
 
-const STORE_CONFIG_JSON = "llm_config.json";
+
 
 /** 构建 store 配置文件的绝对路径；无 store 目录时返回 null */
 function getStoreConfigPath(): string | null {
   const storePath = getStorePath();
   if (!storePath) return null;
-  return path.join(path.dirname(storePath), STORE_CONFIG_JSON);
+  return path.join(path.dirname(storePath));
 }
 
 /** 读取 JSON 配置的通用方法，供 WatchedFileCache 使用 */
 async function readStoreConfig(filePath: string): Promise<unknown> {
+  debugger;
   const exists = await fse.pathExists(filePath);
   if (!exists) return null;
   return fse.readJson(filePath, { encoding: "utf-8" }) as Promise<unknown>;

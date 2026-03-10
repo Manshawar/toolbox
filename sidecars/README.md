@@ -1,114 +1,43 @@
-# Sidecars 侧车服务
+# Sidecars
 
-Tauri 应用的侧车集合：**core** 为入口二进制，内部根据参数加载 **langchain-serve**（Hono API + better-sqlite3）或 **pty-host**（node-pty + WebSocket 终端）。构建由 tsup 打包两个 worker 的 JS，再通过 @yao-pkg/pkg 将 launcher 与依赖打成单 exe（`src-tauri/binaries/core-*`）。
+侧车运行时：tsup 打包 `langchain-serve`、`pty-host`，再由 pkg 生成单文件二进制，供 Tauri 主进程拉起。
 
----
+## 依赖管理约定
+
+- **所有运行时依赖写在 `sidecars/package.json`**（含 langchain-serve、pty-host 用到的包）。
+- **`app/langchain-serve`、`app/pty-host` 的 package.json 不再写 dependencies**，避免重复且保证 tsup 从本目录打包时能解析到 `sidecars/node_modules`。
+- 新增能力时：给 **langchain-serve** 用的依赖 → 加到 **sidecars** 的 `dependencies`；仅构建/类型用 → 加到 **devDependencies**。
+
+## 常用命令（在仓库根目录执行）
+
+| 命令 | 说明 |
+|------|------|
+| `pnpm build:sidecar` | 构建 sidecar 二进制（当前平台） |
+| `pnpm build:sidecar:mac` / `:win` / `:linux` | 指定平台构建 |
+| `pnpm -C sidecars/app/langchain-serve run dev` | 仅启动 langchain-serve API（不打包） |
+| `pnpm -C sidecars run dev` | 在 sidecars 内用 turbo 跑各 app 的 dev |
 
 ## 目录结构
 
 ```
 sidecars/
-├── package.json          # core 包（name: "core"），含 pkg 配置与依赖
-├── tsup.config.ts        # 多入口打包 langchain-serve、pty-host → dist/*.js；onSuccess 注入 launcher + 调 pkg
-├── build/
-│   └── index.js         # Launcher：根据 argv[2]（langchain-serve | pty-host）require 对应 dist/*.js
+├── package.json       # 唯一依赖声明处
+├── tsup.config.ts    # 打包配置，entry 指向 app/*/src
 ├── app/
-│   ├── langchain-serve/ # Hono API，端口 API_PORT；可选 DB_PATH + better-sqlite3
-│   │   ├── src/index.ts
-│   │   ├── script/dev.ts
-│   │   └── package.json
-│   └── pty-host/        # PTY + WebSocket，端口 PTY_PORT
-│       ├── src/index.ts
-│       ├── script/dev.ts
-│       └── package.json
-├── dist/                # 构建产出（tsup 生成，launcher 写入）
-│   ├── index.js         # Launcher（来自 build/index.js，不经过 tsup 打包）
-│   ├── langchain-serve.js
-│   └── pty-host.js
-└── README.md
+│   ├── langchain-serve/   # Hono API，无 node_modules 依赖
+│   └── pty-host/         # 另一 worker
+├── build/            # launcher 等
+└── dist/             # tsup 输出，供 pkg 打二进制
 ```
 
-- **无** `src/` 或 `src/entries/`：两服务入口直接指向 `app/*/src/index.ts`，launcher 为独立脚本 `build/index.js`，在 tsup 的 onSuccess 中写入 `dist/index.js`。
+## 若 pkg 体积偏大（monorepo 导致）
 
----
+当前 pkg 在 **sidecars** 目录执行，会从 `sidecars/node_modules` 解析；在 pnpm workspace 下可能链到根目录 store，导致打进二进制的内容偏多。
 
-## 构建流程
+**可选：不用 monorepo 管理 sidecars**
 
-1. **tsup**：根据 `tsup.config.ts` 的 `entry` 将 `app/langchain-serve/src/index.ts`、`app/pty-host/src/index.ts` 分别打包为 `dist/langchain-serve.js`、`dist/pty-host.js`（external：node-pty、ws、better-sqlite3，由 pkg 以 assets 形式打进二进制）。
-2. **注入 Launcher**：把 `build/index.js` 内容写入 `dist/index.js`，作为 pkg 的入口。
-3. **pkg**：以 `dist/index.js` 为入口、结合 `package.json` 的 `pkg.assets`，生成 `src-tauri/binaries/core-<target>.exe`（或当前平台无扩展名）。Launcher 运行时通过 `__dirname` 找同目录下的 `langchain-serve.js`、`pty-host.js`（pkg 会把它们打进快照，路径在 snapshot 内）。
+- 在根目录 **pnpm-workspace.yaml** 里去掉 sidecars 相关包，只保留主应用需要的（或不再把 sidecars 当 workspace 包）。
+- 之后在 **sidecars 目录内**单独执行一次 `pnpm install`，让 sidecars 拥有自己的 `node_modules`，不再和根目录混用。
+- 再执行 `pnpm run build`（在 sidecars 下）或根目录 `pnpm run build:sidecar`（会 `-C sidecars` 执行），pkg 就只会解析 **sidecars 自己的 node_modules**，体积一般会正常不少。
 
----
-
-## 运行模型
-
-- **Launcher**（`build/index.js`）：读取 `process.argv[2]`，为 `langchain-serve` 时 `require('./langchain-serve.js')`，为 `pty-host` 时 `require('./pty-host.js')`；否则报错退出。
-- **Tauri**：在 setup 中 spawn **core**，通过 `.args(["langchain-serve"])` 或 `.args(["pty-host"])` 传参，并注入环境变量（如 `API_PORT`、`PTY_PORT`、可选 `DB_PATH`）。当前实现中先 spawn 一次 core 跑 langchain-serve；pty-host 可按需再 spawn 一次 core 并传 `pty-host`。
-
----
-
-## 命令说明
-
-### 在 sidecars 目录下
-
-| 命令 | 说明 |
-|------|------|
-| `pnpm run dev` | 不打包：并行启动 `langchain-serve`、`pty-host` 的 dev（各自 `tsx script/dev.ts`），端口由 script 从根目录 `.env` 或 `--port` 解析。 |
-| `pnpm run build` | 执行 tsup → 产出 `dist/`，并执行 onSuccess（注入 launcher + pkg），生成 `src-tauri/binaries/core-<当前平台>`。 |
-| `pnpm run build:mac` / `build:win` / `build:linux` | 设置 `SIDECAR_TARGET` 后执行 tsup，用于跨平台打二进制（需在对应环境或 CI 中跑）。 |
-
-### 在项目根目录
-
-| 命令 | 说明 |
-|------|------|
-| `pnpm run build:sidecar` | 执行 `pnpm -C sidecars run build`，即上述 sidecars 的 build。 |
-| `pnpm run build:sidecar:win` / `:mac` / `:linux` | 在根目录执行 sidecars 的 build:win / build:mac / build:linux。 |
-| `pnpm run build:app` | 先 `build:sidecar`，再 `pnpm tauri build`，产出完整桌面安装包。 |
-
----
-
-## 两个 App 说明
-
-### langchain-serve
-
-- **栈**：Hono、@hono/node-server，可选 better-sqlite3（需设置 `DB_PATH`）。
-- **端口**：`API_PORT`（默认 8264）。
-- **接口**：`GET /health`；可选 `GET /db`（需 DB_PATH）。
-- **开发**：`pnpm --filter langchain-serve run dev`（tsx 跑 `script/dev.ts`，端口从 `.env` 或参数来）。
-
-### pty-host
-
-- **栈**：node-pty、ws。
-- **端口**：`PTY_PORT`（默认 8265）。
-- **开发**：`pnpm --filter pty-host run dev`。
-
----
-
-## 依赖与 pkg 注意点
-
-- **node-pty、ws、better-sqlite3** 在 tsup 中为 `external`，不打进 dist 的 bundle；pkg 通过 `package.json` 的 `pkg.assets` 将所需文件打进二进制，运行时从 pkg 快照内解析。
-- **Node 版本**：tsup 的 target 为 node24；pkg 使用 `@yao-pkg/pkg`，target 为 `node24-<os>-<arch>`，与当前开发环境一致即可。
-
----
-
-## better-sqlite3 与 pkg（必读）
-
-`require('better-sqlite3')` 时，Node 会解析到 **pnpm 目录** 下的路径（如 `node_modules/.pnpm/better-sqlite3@12.6.2/.../build/better_sqlite3.node`）并对该路径做 `stat`。若该路径未被 pkg 打进快照，运行时报错：`File or directory '.../better_sqlite3.node' was not included into executable`。
-
-**因此必须在 `package.json` 的 `pkg.assets` 里显式包含 better-sqlite3 的 native 产物：**
-
-```json
-"pkg": {
-  "assets": [
-    "../node_modules/.pnpm/better-sqlite3@*/node_modules/better-sqlite3/build/**"
-  ]
-}
-```
-
-- 路径相对于 **sidecars 目录**（pkg 的 cwd）；`../node_modules` 即 monorepo 根下的 `node_modules/.pnpm/`。
-- 使用 **`better-sqlite3@*`** 通配版本号，避免写死 `@12.6.2`：升级 better-sqlite3 后无需改配置。若 pkg 或 pnpm 行为导致该 glob 匹配不到，可临时改为写死版本路径再排查。
-- 只包含 `build/**` 即可（内含 `Release/better_sqlite3.node` 或当前平台的 .node），无需整包。
-
-**升级 better-sqlite3 后**：若使用上述通配写法，一般无需改动；若曾改为写死版本路径，记得把 `pkg.assets` 里的版本号改成新版本，或改回 `better-sqlite3@*`。
-
-better-sqlite3 建议使用 **v12.x**（Node 24 有 prebuild）。详见根目录 `doc/sidecar-architecture.md` 中「better-sqlite3 rebuild 失败」一节。
+这样 sidecars 相当于「独立项目」：依赖只在 sidecars 装、构建只在 sidecars 跑，不再受根目录 node_modules 影响。
