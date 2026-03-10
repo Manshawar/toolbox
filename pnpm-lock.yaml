@@ -226,6 +226,9 @@ importers:
       '@types/node':
         specifier: ^22.19.13
         version: 22.19.13
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       '@yao-pkg/pkg':
         specifier: ^6.13.0
         version: 6.14.1(encoding@0.1.13)
@@ -241,24 +244,7 @@ importers:
 
   sidecars/app/langchain-serve: {}
 
-  sidecars/app/pty-host:
-    dependencies:
-      node-pty:
-        specifier: ^1.0.0
-        version: 1.1.0
-      ws:
-        specifier: ^8.18.0
-        version: 8.19.0
-    devDependencies:
-      '@types/node':
-        specifier: ^22.19.10
-        version: 22.19.13
-      '@types/ws':
-        specifier: ^8.18.1
-        version: 8.18.1
-      tsx:
-        specifier: ^4.19.2
-        version: 4.21.0
+  sidecars/app/pty-host: {}
 
 packages:
 

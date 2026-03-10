@@ -63,5 +63,4 @@ server.listen(port, HOST, () => {
   const p = typeof addr === "object" && addr ? addr.port : 0;
   const base = `http://${HOST}:${p}`;
   const wsBase = `ws://${HOST}:${p}`;
-  log.info(`PTY_PORT=${p} | HTTP: ${base} | WebSocket: ${wsBase} | 健康检查: ${base}/health`);
 });
