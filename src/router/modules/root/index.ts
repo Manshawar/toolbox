@@ -31,6 +31,20 @@ const root: Array<AppRouteRecordRaw> = [
       },
     ],
   },
+  {
+    path: '/setting',
+    component: Layout,
+    name: 'Setting',
+    meta: { title: t('route.pathName.setting'), icon: 'iEL-setting' },
+    children: [
+      {
+        path: '',
+        name: 'SettingPage',
+        component: () => import('@/views/setting/index.vue'),
+        meta: { title: t('route.pathName.setting') },
+      },
+    ],
+  },
   { path: '/:path(.*)', redirect: '/error/404' },
 ];
 

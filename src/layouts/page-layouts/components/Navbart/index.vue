@@ -1,6 +1,6 @@
 <script setup lang="ts">
-  // import { ref } from 'vue'
   import { ref } from 'vue';
+  import { useRouter } from 'vue-router';
   import { AppLocale, AppTheme } from '@/components/Application';
   import SvgIcon from '@/components/SvgIcon/index.vue';
   import { useRootSetting } from '@/hooks/setting/useRootSetting';
@@ -11,8 +11,13 @@
   import AppLogo from '../AppLogo/index.vue';
 
   const drawer = ref(false);
-
+  const router = useRouter();
   const { appConfig } = useRootSetting();
+
+  function handleSettingCommand(command: string) {
+    if (command === 'theme') drawer.value = true;
+    else if (command === 'setting') router.push('/setting');
+  }
 </script>
 
 <template>
@@ -31,14 +36,43 @@
       <div class="navbar-right">
         <AppLocale class="icon" />
         <AppTheme />
-        <!-- <AppAccount /> -->
-        <el-tooltip content="主题 / 外观" placement="bottom">
-          <SvgIcon class="cursor" name="iEL-brush" @click="drawer = true" />
-        </el-tooltip>
+        <el-dropdown trigger="click" @command="handleSettingCommand">
+          <span class="navbar-right__setting-trigger" title="设置">
+            <SvgIcon class="cursor" name="iEL-setting" />
+          </span>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="theme">
+                <SvgIcon name="iEL-brush" class="dropdown-icon" />
+                主题 / 外观
+              </el-dropdown-item>
+              <el-dropdown-item command="setting">
+                <SvgIcon name="iEL-setting" class="dropdown-icon" />
+                设置
+              </el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
-    <div v-show="appConfig.hideNavbart" class="setting-icon cursor">
-      <SvgIcon name="iEL-brush" @click="drawer = true" />
+    <div v-show="appConfig.hideNavbart" class="setting-icon">
+      <el-dropdown trigger="click" @command="handleSettingCommand">
+        <span class="setting-icon__trigger">
+          <SvgIcon class="cursor" name="iEL-setting" />
+        </span>
+        <template #dropdown>
+          <el-dropdown-menu>
+            <el-dropdown-item command="theme">
+              <SvgIcon name="iEL-brush" class="dropdown-icon" />
+              主题 / 外观
+            </el-dropdown-item>
+            <el-dropdown-item command="setting">
+              <SvgIcon name="iEL-setting" class="dropdown-icon" />
+              设置
+            </el-dropdown-item>
+          </el-dropdown-menu>
+        </template>
+      </el-dropdown>
     </div>
     <Setting v-model:model-value="drawer" />
   </div>
@@ -77,6 +111,20 @@
         gap: 10px;
         align-items: center;
         margin-right: 10px;
+
+        .navbar-right__setting-trigger {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.35em;
+          padding: 4px;
+          line-height: 1;
+        }
+
+        .dropdown-icon {
+          margin-right: 6px;
+          vertical-align: -0.15em;
+        }
       }
     }
 
@@ -93,6 +141,14 @@
       background-color: var(--main-color);
       color: #fff;
       font-size: var(--font-size-extra-large);
+
+      .setting-icon__trigger {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4em;
+        line-height: 1;
+      }
     }
   }
 </style>

@@ -52,9 +52,38 @@
     },
     "closeTabDrag": "关闭标签页拖拽"
   },
+  "settings": {
+    "title": "设置",
+    "tabs": {
+      "ai": "AI 设置",
+      "general": "通用"
+    },
+    "ai": {
+      "title": "AI 模型与 API",
+      "models": "模型",
+      "modelsHint": "启用或关闭要使用的模型",
+      "apiKeys": "API 密钥",
+      "apiKeysHint": "输入 API Key 以使用对应平台的付费模型",
+      "providerDeepseek": "DeepSeek",
+      "providerBailian": "百炼",
+      "providerOllama": "Ollama",
+      "ollamaAddress": "Ollama 服务地址",
+      "ollamaAddressPlaceholder": "http://127.0.0.1:11434",
+      "ollamaDefaultModel": "默认模型名称",
+      "ollamaDefaultModelPlaceholder": "如 llama3.1，不填则调用时通过参数传 model",
+      "useApiKey": "使用 {name} API Key",
+      "apiKeyPlaceholder": "请输入 API Key",
+      "overrideBaseUrl": "覆盖 Base URL",
+      "overrideBaseUrlHint": "自定义该平台 API 请求的 Base URL",
+      "baseUrlPlaceholder": "https://api.example.com",
+      "defaultModel": "默认模型",
+      "defaultModelPlaceholder": "选择默认使用的模型"
+    }
+  },
   "route": {
     "pathName": {
       "index": "应用中心",
+      "setting": "设置",
       "permissions": "权限管理",
       "permissionsPage": "权限切换",
       "testPermissionsPage1": "Admin权限测试页面",

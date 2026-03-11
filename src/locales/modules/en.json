@@ -52,9 +52,38 @@
     },
     "closeTabDrag": "Close tab drag"
   },
+  "settings": {
+    "title": "Settings",
+    "tabs": {
+      "ai": "AI",
+      "general": "General"
+    },
+    "ai": {
+      "title": "AI Models & API",
+      "models": "Models",
+      "modelsHint": "Enable or disable models to use",
+      "apiKeys": "API Keys",
+      "apiKeysHint": "Enter API Key to use paid models",
+      "providerDeepseek": "DeepSeek",
+      "providerBailian": "Bailian",
+      "providerOllama": "Ollama",
+      "ollamaAddress": "Ollama service URL",
+      "ollamaAddressPlaceholder": "http://127.0.0.1:11434",
+      "ollamaDefaultModel": "Default model name",
+      "ollamaDefaultModelPlaceholder": "e.g. llama3.1; or pass model in params when calling",
+      "useApiKey": "Use {name} API Key",
+      "apiKeyPlaceholder": "Enter API Key",
+      "overrideBaseUrl": "Override Base URL",
+      "overrideBaseUrlHint": "Custom base URL for this provider",
+      "baseUrlPlaceholder": "https://api.example.com",
+      "defaultModel": "Default Model",
+      "defaultModelPlaceholder": "Choose default model"
+    }
+  },
   "route": {
     "pathName": {
       "index": "App Center",
+      "setting": "Settings",
       "permissions": "Permissions",
       "permissionsPage": "Permissions Toggle",
       "testPermissionsPage1": "Admin Permissions",

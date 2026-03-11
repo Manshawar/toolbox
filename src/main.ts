@@ -8,6 +8,7 @@ import { configMainGlobalProperties } from "./utils";
 import { initTauriConfig } from "./utils/getConfig";
 import { useElementPlus } from "./utils/plugin/element";
 import { applySidecarPorts } from "@/config/sidecarPorts";
+import { initAiPersistStorage } from "@/tauriStore";
 
 // tailwind css
 import "@/styles/tailwind.css";
@@ -23,6 +24,7 @@ const app = createApp(App);
 const init = async () => {
   await configMainStore(app);
   await initTauriConfig(store);
+  await initAiPersistStorage();
   getServerConfig(app).then(async (config) => {
     // 路由
     await configMainRouter(app);
