@@ -5,6 +5,8 @@
       <el-button @click="insertDataHandler">插入数据</el-button>
       <el-button @click="queryDataHandler">查询数据</el-button>
       <el-button @click="getAllStoreHandler">获取全部 Store</el-button>
+      <el-button @click="testNodeHandler">测试 Node</el-button>
+      <el-button @click="testNpmHandler">测试 npm</el-button>
     </div>
     <div v-if="resultLabel" class="mt-4">
       <div class="mb-1 text-sm text-gray-500">{{ resultLabel }}</div>
@@ -15,12 +17,34 @@
 </template>
 <script lang="ts" setup>
 import { ref } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 import { testLink } from '@/server/test';
 import { insertData, queryData } from '@/sql';
 import { getStore } from '@/tauriStore';
 const resultLabel = ref('');
 const result = ref('');
-
+const testNodeHandler = async () => {
+  try {
+    const output = await invoke<{ stdout: string; stderr: string; success: boolean }>(
+      'run_node_runtime',
+      { args: ['-e', 'console.log("Hello, World!")'] }
+    );
+    setResult('测试 Node', output);
+  } catch (e) {
+    setResult('测试 Node', { error: String(e) });
+  }
+};
+const testNpmHandler = async () => {
+  try {
+    const output = await invoke<{ stdout: string; stderr: string; success: boolean }>(
+      'run_npm_runtime',
+      { args: ['--version'] }
+    );
+    setResult('测试 npm', output);
+  } catch (e) {
+    setResult('测试 npm', { error: String(e) });
+  }
+};
 function setResult(label: string, data: unknown) {
   resultLabel.value = label;
   result.value = typeof data === 'object' && data !== null

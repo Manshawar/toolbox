@@ -1,6 +1,10 @@
 {
 	"folders": [
     {
+      "name": "langchainApp",
+      "path": "."
+    },
+    {
       "name": "langchain-serve",
       "path": "sidecars/app/langchain-serve"
     },
@@ -9,14 +13,11 @@
       "path": "sidecars"
     },
     {
-      "name": "langchainApp",
-      "path": "."
-    },
-    {
       "name": "src-tauri",
       "path": "src-tauri"
     },
     {
+      "name": "cli",
       "path": "../../../utils/cli"
     }
   ],
