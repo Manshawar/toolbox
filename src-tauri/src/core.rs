@@ -1,7 +1,7 @@
-//! Core 子进程启动与端口管理。
+//! Core 子进程启动与端口管理（仅使用内置 Node + JS core）。
 //!
-//! - 未设 TAURI_SKIP_SIDECAR：用 portpicker 分配端口，使用 resources 内 Node 执行 resources/core/index.js，注入环境变量。
-//! - TAURI_SKIP_SIDECAR=1 或 resource_dir/core 不存在：不启动进程，在 core/.env 写入与 [build_core_env] 一致的环境变量。
+//! - 正常情况：用 portpicker 分配端口，使用 resources 内 Node 执行 resources/core/index.js，注入环境变量。
+//! - 当需要跳过启动（例如开发时只想本地用 tsx 跑 core，或运行环境缺少 Runtime / core 构建产物）时，只写入 core/.env，内容与 [build_core_env] 一致。
 
 use std::fs;
 use std::io::Write;
@@ -58,18 +58,17 @@ fn env_to_dotenv_lines(env: &[(String, String)]) -> String {
         .join("\n")
 }
 
-/// 解析 core 源码目录（core 或 sidecars），用于写入 .env
+/// 解析 core 源码目录（core），用于写入 .env
 fn core_src_dir() -> Option<std::path::PathBuf> {
     let cwd = std::env::current_dir().ok()?;
-    for name in ["core", "sidecars"] {
-        let parent = cwd.parent().map(|p| p.join(name));
-        if parent.as_ref().is_some_and(|p| p.join("package.json").exists()) {
-            return parent;
-        }
-        let cur = cwd.join(name);
-        if cur.join("package.json").exists() {
-            return Some(cur);
-        }
+    let name = "core";
+    let parent = cwd.parent().map(|p| p.join(name));
+    if parent.as_ref().is_some_and(|p| p.join("package.json").exists()) {
+        return parent;
+    }
+    let cur = cwd.join(name);
+    if cur.join("package.json").exists() {
+        return Some(cur);
     }
     Some(cwd.join("core"))
 }
