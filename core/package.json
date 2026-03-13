@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsup",
+    "dev:watch": "tsup --watch",
     "build:mac": "CORE_PTY_PREBUILD=darwin-arm64 tsup",
     "build:win": "CORE_PTY_PREBUILD=win32-x64 tsup",
     "build:linux": "CORE_PTY_PREBUILD=linux-x64 tsup"
