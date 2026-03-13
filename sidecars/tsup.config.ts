@@ -106,18 +106,96 @@ function pkgToBinaries() {
   }
 }
 
-/** 将 launcher 脚本（build/index.js）以写入文本形式塞入 dist，作为入口；不经过 tsup 打包 */
+const RESOURCES_CORE = path.join(__dirname, "..", "src-tauri", "resources", "core");
+
+/** 将 launcher 脚本（build/index.js）写入 resources/core，作为入口 */
 function injectLauncher() {
   const launcherPath = path.join(__dirname, "build", "index.js");
-  const distPath = path.join(__dirname, "dist", "index.js");
+  const distPath = path.join(RESOURCES_CORE, "index.js");
   if (!fs.existsSync(launcherPath)) {
     console.error("[core] launcher 不存在: " + launcherPath);
     process.exit(1);
   }
   const content = "#!/usr/bin/env node\n" + fs.readFileSync(launcherPath, "utf8");
-  fs.mkdirSync(path.dirname(distPath), { recursive: true });
+  fs.mkdirSync(RESOURCES_CORE, { recursive: true });
   fs.writeFileSync(distPath, content, "utf8");
-  console.log("[core] 已写入 dist/index.js (launcher)");
+  console.log("[core] 已写入 resources/core/index.js (launcher)");
+}
+
+/** 仅安装必须随包分发的原生依赖（better-sqlite3、node-pty），其余已由 tsup 打进 bundle */
+const CORE_NATIVE_DEPS: Record<string, string> = {
+  "better-sqlite3": "^12.6.2",
+  "node-pty": "^1.0.0",
+};
+
+function installCoreNodeModules() {
+  const pkgDest = path.join(RESOURCES_CORE, "package.json");
+  const minimalPkg = {
+    name: "core",
+    version: "1.0.0",
+    private: true,
+    dependencies: CORE_NATIVE_DEPS,
+  };
+  fs.writeFileSync(pkgDest, JSON.stringify(minimalPkg, null, 2), "utf8");
+  console.log("[core] 已写入 resources/core/package.json（仅原生依赖）");
+  try {
+    execSync("npm install --omit=dev --ignore-scripts --legacy-peer-deps", {
+      cwd: RESOURCES_CORE,
+      stdio: "inherit",
+      env: { ...process.env, NODE_ENV: "production" },
+    });
+    console.log("[core] 已安装 resources/core/node_modules");
+    pruneCoreNodeModules();
+  } catch (e) {
+    console.warn("[core] resources/core 下 npm install 失败，请在该目录手动执行: npm install --omit=dev --legacy-peer-deps", e);
+  }
+}
+
+/** 裁剪 node_modules：只保留当前平台 node-pty prebuild（约省 45MB），并删除文档文件 */
+function pruneCoreNodeModules() {
+  const nm = path.join(RESOURCES_CORE, "node_modules");
+  if (!fs.existsSync(nm)) return;
+
+  const platform = process.platform;
+  const arch = process.arch;
+  const keepPrebuild = `${platform}-${arch === "x64" ? "x64" : arch === "arm64" ? "arm64" : arch}`;
+
+  const ptyPrebuilds = path.join(nm, "node-pty", "prebuilds");
+  if (fs.existsSync(ptyPrebuilds)) {
+    const dirs = fs.readdirSync(ptyPrebuilds, { withFileTypes: true }).filter((d: fs.Dirent) => d.isDirectory());
+    for (const d of dirs) {
+      if (d.name !== keepPrebuild) {
+        const full = path.join(ptyPrebuilds, d.name);
+        fs.rmSync(full, { recursive: true });
+        console.log("[core] 已删除 node-pty/prebuilds/" + d.name + "（非本机平台）");
+      }
+    }
+  }
+
+  function rmDocFiles(dir: string, depth: number) {
+    if (depth > 6) return;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) rmDocFiles(full, depth + 1);
+      else if (/\.(md|markdown)$/i.test(e.name) || /^(README|CHANGELOG|LICENSE|HISTORY)(\.(md|txt))?$/i.test(e.name))
+        try {
+          fs.unlinkSync(full);
+        } catch {}
+    }
+  }
+  rmDocFiles(nm, 0);
+
+  try {
+    const out = execSync(`du -sm "${nm}"`, { encoding: "utf8", cwd: RESOURCES_CORE });
+    const sizeMB = out.split(/\s/)[0] ?? "?";
+    console.log("[core] 裁剪后 node_modules 约 " + sizeMB + " MB");
+  } catch {}
 }
 
 export default defineConfig({
@@ -125,7 +203,7 @@ export default defineConfig({
     "langchain-serve": "app/langchain-serve/src/index.ts",
     "pty-host": "app/pty-host/src/index.ts",
   },
-  outDir: "dist",
+  outDir: "../src-tauri/resources/core",
   format: ["cjs"],
   splitting: false,
   sourcemap: true,
@@ -134,9 +212,19 @@ export default defineConfig({
   platform: "node",
   target: "node24",
   treeshake: true,
-  // external: ["node-pty", "ws", "better-sqlite3"],
-  // // 强制把其余依赖打进 bundle，否则 pkg 打单文件时找不到 @hono/swagger-ui 等
-  // noExternal: [/.*/],
+  noExternal: [
+    'hono',
+    'fs-extra',
+    '@langchain/core', // 甚至是复杂的 langchain
+    'zod',
+    'dotenv',
+    "@hono/node-server",
+    "@hono/swagger-ui",
+    "pino",
+    "pino-pretty"
+  ],
+  // 仅保留无法打包的原生模块在 node_modules，其余打进 bundle
+  external: ["better-sqlite3", "node-pty"],
   esbuildOptions(options, context) {
     // 从 sidecars 目录解析 node_modules，保证 monorepo 下能找到依赖
     options.absWorkingDir = __dirname;
@@ -147,6 +235,7 @@ export default defineConfig({
   onSuccess: async () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
     injectLauncher();
-    pkgToBinaries();
+    installCoreNodeModules();
+    // pkgToBinaries();
   },
 });

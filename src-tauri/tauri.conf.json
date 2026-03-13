@@ -45,7 +45,8 @@
     ],
     "resources": [
       "config/settings.json",
-      "help/nodeRuntime"
+      "help/nodeRuntime",
+      "resources/core"
     ]
   }
 }
