@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue';
-import { invoke } from '@tauri-apps/api/core';
+// import { invoke } from '@tauri-apps/api/core';
 import ToolboxAppCard from './components/ToolboxAppCard.vue';
 
 defineOptions({
@@ -20,11 +20,11 @@ interface AppItem {
   version?: string | null;
 }
 
-/** Rust 端返回结构 */
-interface AppInstallInfo {
-  installed: boolean;
-  version: string | null;
-}
+// /** Rust 端返回结构 */
+// interface AppInstallInfo {
+//   installed: boolean;
+//   version: string | null;
+// }
 
 const activeTab = ref('tools');
 

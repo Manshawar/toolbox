@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev:web",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "pnpm build && pnpm run build:sidecar",
     "frontendDist": "../dist"
   },
   "app": {
@@ -40,9 +40,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": [
-      "binaries/core"
-    ],
+    "externalBin": [],
     "resources": [
       "config/settings.json",
       "help/nodeRuntime",

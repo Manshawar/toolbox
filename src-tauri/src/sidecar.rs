@@ -1,16 +1,13 @@
-//! 子进程（sidecar）启动与端口管理。
+//! 子进程（core）启动与端口管理。
 //!
-//! - 未设 TAURI_SKIP_SIDECAR：用 portpicker 分配端口并启动 sidecar，端口写入 SidecarPorts，由 get_config 合并后返回前端。
-//! - TAURI_SKIP_SIDECAR=1：不启动 sidecar，在 sidecars/.env 写入与注入一致的环境变量，跳过pkg打包。
-//!
-//! 侧车环境变量与 sidecars/.env 内容由 [build_sidecar_env] 统一生成，保证一致。
+//! - 未设 TAURI_SKIP_SIDECAR：用 portpicker 分配端口，使用 resources 内 Node 执行 resources/core/index.js，注入环境变量。
+//! - TAURI_SKIP_SIDECAR=1 或 resource_dir/core 不存在：不启动进程，在 sidecars/.env 写入与 [build_sidecar_env] 一致的环境变量。
 
 use std::fs;
 use std::io::Write;
+use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
-use tauri_plugin_shell::process::CommandEvent;
-use tauri_plugin_shell::ShellExt;
 
 use crate::config;
 
@@ -65,26 +62,140 @@ fn env_to_dotenv_lines(env: &[(String, String)]) -> String {
         .join("\n")
 }
 
-/// 解析 sidecars 目录路径（项目根/sidecars 或当前目录下 sidecars，且存在 package.json）
+/// 解析 sidecar 源码目录（sidecars 或 core），用于写入 .env
 fn sidecars_dir() -> Option<std::path::PathBuf> {
     let cwd = std::env::current_dir().ok()?;
-    let parent_sidecars = cwd.parent().map(|p| p.join("sidecars"));
-    if parent_sidecars.as_ref().is_some_and(|p| p.join("package.json").exists()) {
-        return parent_sidecars;
+    for name in ["sidecars", "core"] {
+        let parent = cwd.parent().map(|p| p.join(name));
+        if parent.as_ref().is_some_and(|p| p.join("package.json").exists()) {
+            return parent;
+        }
+        let cur = cwd.join(name);
+        if cur.join("package.json").exists() {
+            return Some(cur);
+        }
     }
-    let cur_sidecars = cwd.join("sidecars");
-    if cur_sidecars.join("package.json").exists() {
-        return Some(cur_sidecars);
+    Some(cwd.join("sidecars"))
+}
+
+/// 获取 resources 内 Node 可执行文件路径（与 invoke 一致：先 resource_dir，再回退到 CARGO_MANIFEST_DIR）
+fn node_runtime_bin_dir(app: &AppHandle) -> Option<std::path::PathBuf> {
+    let bin = app
+        .path()
+        .resource_dir()
+        .ok()
+        .map(|d| d.join("help").join("nodeRuntime").join("bin"));
+    if let Some(ref b) = bin {
+        if b.exists() {
+            return Some(b.clone());
+        }
     }
-    Some(cur_sidecars)
+    let fallback = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("help")
+        .join("nodeRuntime")
+        .join("bin");
+    if fallback.exists() {
+        Some(fallback)
+    } else {
+        None
+    }
+}
+
+/// 解析 core 目录：优先 resource_dir，再回退到 target/debug|release/resources/core 或源码 resources/core
+fn resolve_core_dir(app: &AppHandle) -> Option<(std::path::PathBuf, std::path::PathBuf)> {
+    let manifest = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+    // 1. 打包后：target/debug/resources 或 target/release/resources 或 .app/Contents/Resources
+    if let Ok(res) = app.path().resource_dir() {
+        if res.exists() {
+            let core = res.join("core");
+            if core.join("index.js").exists() {
+                return Some((res.clone(), core));
+            }
+        }
+    }
+
+    // 2. debug 构建：target/debug/resources/core
+    let debug_core = manifest.join("target").join("debug").join("resources").join("core");
+    if debug_core.join("index.js").exists() {
+        let res = manifest.join("target").join("debug").join("resources");
+        return Some((res, debug_core));
+    }
+
+    // 3. release 构建：target/release/resources/core
+    let release_core = manifest.join("target").join("release").join("resources").join("core");
+    if release_core.join("index.js").exists() {
+        let res = manifest.join("target").join("release").join("resources");
+        return Some((res, release_core));
+    }
+
+    // 4. 源码：src-tauri/resources/core（dev 未打包时）
+    let src_core = manifest.join("resources").join("core");
+    if src_core.join("index.js").exists() {
+        return Some((manifest.join("resources"), src_core));
+    }
+
+    None
 }
 
 pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
-    eprintln!("[sidecar] 正在启动 core 子进程（需已存在 src-tauri/binaries/core-<target>）...");
+    let (_resource_dir, core_dir) = match resolve_core_dir(app) {
+        Some(pair) => pair,
+        None => {
+            eprintln!("[sidecar] 未找到 core（已尝试 resource_dir、target/debug|release/resources/core、resources/core），请先执行 pnpm -C core run build");
+            write_sidecar_env_when_skip(app);
+            return Ok(());
+        }
+    };
 
-    let api_port = portpicker::pick_unused_port().ok_or("无法分配 API 端口")?;
-    let pty_port = portpicker::pick_unused_port().ok_or("无法分配 PTY 端口")?;
-    eprintln!("[sidecar] 分配可用端口 API={} PTY={}", api_port, pty_port);
+    let index_js = core_dir.join("index.js");
+
+    // Node：与 core 同源的 resource_dir 下的 help/nodeRuntime/bin，否则回退到 manifest
+    let bin_dir = _resource_dir
+        .join("help")
+        .join("nodeRuntime")
+        .join("bin");
+    let bin_dir = if bin_dir.exists() {
+        bin_dir
+    } else {
+        match node_runtime_bin_dir(app) {
+            Some(d) => d,
+            None => {
+                eprintln!("[sidecar] Node Runtime 未找到（已尝试 {}）", bin_dir.display());
+                write_sidecar_env_when_skip(app);
+                return Ok(());
+            }
+        }
+    };
+
+    let node_exe = bin_dir.join(if cfg!(target_os = "windows") {
+        "node.exe"
+    } else {
+        "node"
+    });
+    if !node_exe.exists() {
+        eprintln!("[sidecar] node 可执行文件未找到: {}", node_exe.display());
+        write_sidecar_env_when_skip(app);
+        return Ok(());
+    }
+
+    let api_port = match portpicker::pick_unused_port() {
+        Some(p) => p,
+        None => {
+            eprintln!("[sidecar] 无法分配端口，跳过启动 core");
+            write_sidecar_env_when_skip(app);
+            return Ok(());
+        }
+    };
+    let pty_port = match portpicker::pick_unused_port() {
+        Some(p) => p,
+        None => {
+            eprintln!("[sidecar] 无法分配 PTY 端口，跳过启动 core");
+            write_sidecar_env_when_skip(app);
+            return Ok(());
+        }
+    };
+    eprintln!("[sidecar] 使用内置 Node 启动 core | 端口 API={} PTY={}", api_port, pty_port);
 
     let env_vars = build_sidecar_env(app, api_port, pty_port);
     if is_dev() {
@@ -99,39 +210,35 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
         }
     }
 
-    let mut sidecar_api = app
-        .shell()
-        .sidecar("core")
-        .map_err(|e| {
-            let msg = format!(
-                "创建 sidecar core 失败: {}（请先执行 pnpm run build:sidecar 生成 src-tauri/binaries/core-*）",
-                e
-            );
-            eprintln!("[sidecar] {}", msg);
-            msg
-        })?
-        .args(["langchain-serve"]);
+    let env_iter: Vec<_> = env_vars.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
 
-    for (k, v) in &env_vars {
-        sidecar_api = sidecar_api.env(k, v);
+    // langchain-serve（spawn 失败不退出应用，只打日志）
+    match Command::new(&node_exe)
+        .arg(&index_js)
+        .arg("langchain-serve")
+        .current_dir(&core_dir)
+        .envs(env_iter.iter().map(|(k, v)| (*k, *v)))
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()
+    {
+        Ok(_) => {}
+        Err(e) => eprintln!("[sidecar] 启动 langchain-serve 失败（应用继续运行）: {}", e),
     }
 
-    let (mut rx_api, _child_api) = sidecar_api.spawn().map_err(|e| {
-        let msg = format!("启动 core langchain-serve 失败: {}", e);
-        eprintln!("[sidecar] {}", msg);
-        msg
-    })?;
-
-    tauri::async_runtime::spawn(async move {
-        while let Some(event) = rx_api.recv().await {
-            match event {
-                CommandEvent::Stdout(line) => print!("{}", String::from_utf8_lossy(&line)),
-                CommandEvent::Stderr(line) => eprint!("{}", String::from_utf8_lossy(&line)),
-                CommandEvent::Error(e) => eprintln!("[core langchain-serve 错误] {}", e),
-                _ => {}
-            }
-        }
-    });
+    // pty-host
+    match Command::new(&node_exe)
+        .arg(&index_js)
+        .arg("pty-host")
+        .current_dir(&core_dir)
+        .envs(env_iter.iter().map(|(k, v)| (*k, *v)))
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()
+    {
+        Ok(_) => {}
+        Err(e) => eprintln!("[sidecar] 启动 pty-host 失败（应用继续运行）: {}", e),
+    }
 
     if let Some(state) = app.try_state::<SidecarPorts>() {
         *state.api_port.lock().unwrap() = Some(api_port);
@@ -139,7 +246,7 @@ pub fn start_sidecars_on_setup(app: &AppHandle) -> Result<(), String> {
     }
 
     println!(
-        "[sidecar] sidecar 接口 | API: http://127.0.0.1:{} | PTY: http://127.0.0.1:{}",
+        "[sidecar] core 接口 | API: http://127.0.0.1:{} | PTY: http://127.0.0.1:{}",
         api_port, pty_port
     );
     Ok(())

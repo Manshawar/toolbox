@@ -1,26 +1,16 @@
 {
   "name": "core",
   "version": "1.0.0",
-  "description": "侧车主运行时：tsup 打包两 worker + pkg 生成二进制",
+  "description": "侧车主运行时：tsup 打包到 resources/core，由 Tauri 内置 Node 启动",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsup",
-    "build:mac": "SIDECAR_TARGET=aarch64-apple-darwin tsup",
-    "build:win": "SIDECAR_TARGET=x86_64-pc-windows-msvc tsup",
-    "build:linux": "SIDECAR_TARGET=x86_64-unknown-linux-gnu tsup",
+    "build:resource": "tsup",
     "dev": "cd app/langchain-serve && pnpm dev && cd ../pty-host && pnpm dev"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "pkg": {
-    "scripts": [
-      "dist/index.js"
-    ],
-    "assets": [
-      "../node_modules/.pnpm/better-sqlite3@12.6.2/node_modules/better-sqlite3/build/**"
-    ]
-  },
   "dependencies": {
     "@hono/node-server": "^1.13.0",
     "@hono/swagger-ui": "^0.6.0",
@@ -42,7 +32,6 @@
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^22.19.13",
     "@types/ws": "^8.18.1",
-    "@yao-pkg/pkg": "^6.13.0",
     "dotenv": "^16.4.5",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2"

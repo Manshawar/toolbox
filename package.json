@@ -11,10 +11,7 @@
     "dev:serve": "pnpm -C sidecars/app/langchain-serve run dev",
     "dev:tauri": "pnpm run build:sidecar && pnpm tauri dev",
     "build": "vue-tsc --noEmit && vite build",
-    "build:sidecar": "pnpm -C sidecars run build",
-    "build:sidecar:mac": "pnpm -C sidecars run build:mac",
-    "build:sidecar:win": "pnpm -C sidecars run build:win",
-    "build:sidecar:linux": "pnpm -C sidecars run build:linux",
+    "build:sidecar": "pnpm -C core run build",
     "build:app": "pnpm run build:sidecar && pnpm tauri build"
   },
   "dependencies": {

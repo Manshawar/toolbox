@@ -15,16 +15,6 @@
     "store:allow-set",
     "store:allow-save",
     "store:allow-load",
-    {
-      "identifier": "shell:allow-execute",
-      "allow": [
-        {
-          "args": true,
-          "name": "binaries/core",
-          "sidecar": true
-        }
-      ]
-    },
     "store:default",
     {
       "identifier": "http:default",

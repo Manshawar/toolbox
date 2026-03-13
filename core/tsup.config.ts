@@ -1,9 +1,9 @@
 /**
- * Sidecar 构建：仅依赖 tsup。
- * 执行 tsup 会：
- * 1. 打包 langchain-serve + pty-host 到 dist/
- * 2. 注入 launcher (build/index.js) 为 dist/index.js
- * 3. 调用 pkg 生成 src-tauri/binaries/core-<target>
+ * Core 侧车构建：仅依赖 tsup。
+ * 1. 打包 langchain-serve + pty-host 到 src-tauri/resources/core/
+ * 2. 注入 launcher (build/index.js) 为 resources/core/index.js
+ * 3. 安装不可打包的原生依赖到 resources/core/node_modules
+ * 启动由 Tauri 用内置 Node (help/nodeRuntime) 执行 index.js，不再使用 pkg 二进制。
  */
 import { defineConfig } from "tsup";
 import { execSync } from "child_process";
@@ -12,99 +12,6 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// @yao-pkg/pkg 的 target 格式: node<version>-<os>-<arch>
-// 与本地开发 Node 版本一致，使用 Node 24
-const TARGET_MAP: Record<string, string> = {
-  "aarch64-apple-darwin": "node24-macos-arm64",
-  "x86_64-apple-darwin": "node24-macos-x64",
-  "x86_64-pc-windows-msvc": "node24-win-x64",
-  "x86_64-unknown-linux-gnu": "node24-linux-x64",
-  "aarch64-unknown-linux-gnu": "node24-linux-arm64",
-};
-
-/** 使用 @yao-pkg/pkg 将 bundle 打成单文件二进制 */
-function pkgToBinaries() {
-  // 检查 @yao-pkg/pkg 是否已安装
-  try {
-    execSync("pnpm list @yao-pkg/pkg", { cwd: __dirname, stdio: "pipe" });
-  } catch {
-    console.error("[core] @yao-pkg/pkg 未安装，请先安装: pnpm add -D @yao-pkg/pkg");
-    process.exit(1);
-  }
-
-  const targetTriple =
-    process.env.SIDECAR_TARGET ?? execSync("rustc --print host-tuple").toString().trim();
-
-  if (!targetTriple) {
-    console.warn("[core] 无法确定目标平台，跳过打包");
-    return;
-  }
-
-  const pkgTarget = TARGET_MAP[targetTriple];
-  if (!pkgTarget) {
-    console.warn(`[core] 不支持的 target: ${targetTriple}，跳过 pkg 打包`);
-    console.warn("[core] 支持的 targets:", Object.keys(TARGET_MAP).join(", "));
-    return;
-  }
-
-  const ext = targetTriple.includes("windows") ? ".exe" : "";
-  const binariesDir = path.join(__dirname, "..", "src-tauri", "binaries");
-  const distDir = path.join(__dirname, "dist");
-  const bundlePath = path.join(distDir, "index.js");
-  const outputPath = path.join(binariesDir, `core-${targetTriple}${ext}`);
-
-  if (!fs.existsSync(bundlePath)) {
-    console.error(`[core] bundle 文件不存在: ${bundlePath}`);
-    return;
-  }
-
-  // 确保输出目录存在
-  fs.mkdirSync(binariesDir, { recursive: true });
-
-  // 如果已存在旧二进制，先删除（避免 Windows 下的文件占用问题）
-  if (fs.existsSync(outputPath)) {
-    fs.unlinkSync(outputPath);
-    console.log(`[core] 已删除旧二进制: ${outputPath}`);
-  }
-
-  const pkgConfigPath = path.join(__dirname, "package.json");
-
-  try {
-    // 使用 @yao-pkg/pkg 打包；--config 将 node-pty、ws 等 external 依赖打进快照，避免运行时 UNEXPECTED-20
-    execSync(
-      `pnpm exec pkg "${bundlePath}" --config "${pkgConfigPath}" --target ${pkgTarget} --output "${outputPath}" --compress GZip`,
-      {
-        stdio: "inherit",
-        cwd: __dirname,
-        env: {
-          ...process.env,
-          // 确保使用 production 模式
-          NODE_ENV: "production",
-        },
-      }
-    );
-    console.log(`[core] 二进制打包成功: ${outputPath}`);
-
-    // 显示文件大小
-    const stats = fs.statSync(outputPath);
-    const sizeMB = (stats.size / 1024 / 1024).toFixed(2);
-    console.log(`[core] 文件大小: ${sizeMB} MB`);
-
-    // 将两个服务 js 复制到 binaries，与 exe 同目录，launcher 按路径 spawn 时能找到
-    // for (const name of ["langchain-serve.js", "pty-host.js", "langchain-serve.js.map", "pty-host.js.map"]) {
-    //   const src = path.join(distDir, name);
-    //   const dest = path.join(binariesDir, name);
-    //   if (fs.existsSync(src)) {
-    //     fs.copyFileSync(src, dest);
-    //     console.log(`[core] 已复制 ${name} -> binaries/`);
-    //   }
-    // }
-  } catch (error) {
-    console.error("[core] 打包失败:", error);
-    process.exit(1);
-  }
-}
 
 const RESOURCES_CORE = path.join(__dirname, "..", "src-tauri", "resources", "core");
 
@@ -122,10 +29,11 @@ function injectLauncher() {
   console.log("[core] 已写入 resources/core/index.js (launcher)");
 }
 
-/** 仅安装必须随包分发的原生依赖（better-sqlite3、node-pty），其余已由 tsup 打进 bundle */
+/** 必须随包分发的依赖：better-sqlite3（含 .node 原生）、node-pty、ws（pty-host 用，未打进 bundle） */
 const CORE_NATIVE_DEPS: Record<string, string> = {
   "better-sqlite3": "^12.6.2",
   "node-pty": "^1.0.0",
+  "ws": "^8.18.0",
 };
 
 function installCoreNodeModules() {
@@ -139,12 +47,13 @@ function installCoreNodeModules() {
   fs.writeFileSync(pkgDest, JSON.stringify(minimalPkg, null, 2), "utf8");
   console.log("[core] 已写入 resources/core/package.json（仅原生依赖）");
   try {
-    execSync("npm install --omit=dev --ignore-scripts --legacy-peer-deps", {
+    // 不加 --ignore-scripts，让 better-sqlite3 的 postinstall 执行，生成 build/*.node 原生二进制
+    execSync("npm install --omit=dev --legacy-peer-deps", {
       cwd: RESOURCES_CORE,
       stdio: "inherit",
       env: { ...process.env, NODE_ENV: "production" },
     });
-    console.log("[core] 已安装 resources/core/node_modules");
+    console.log("[core] 已安装 resources/core/node_modules（含 better-sqlite3 .node）");
     pruneCoreNodeModules();
   } catch (e) {
     console.warn("[core] resources/core 下 npm install 失败，请在该目录手动执行: npm install --omit=dev --legacy-peer-deps", e);
@@ -155,6 +64,13 @@ function installCoreNodeModules() {
 function pruneCoreNodeModules() {
   const nm = path.join(RESOURCES_CORE, "node_modules");
   if (!fs.existsSync(nm)) return;
+
+  // 删除 .bin（npm 的符号链接），避免 Tauri 打包时报 "resource path .bin/semver doesn't exist"；运行时只需 require()，不需要 CLI
+  const binDir = path.join(nm, ".bin");
+  if (fs.existsSync(binDir)) {
+    fs.rmSync(binDir, { recursive: true });
+    console.log("[core] 已删除 node_modules/.bin（避免 Tauri 打包报错）");
+  }
 
   const platform = process.platform;
   const arch = process.arch;
@@ -201,7 +117,6 @@ function pruneCoreNodeModules() {
 export default defineConfig({
   entry: {
     "langchain-serve": "app/langchain-serve/src/index.ts",
-    "pty-host": "app/pty-host/src/index.ts",
   },
   outDir: "../src-tauri/resources/core",
   format: ["cjs"],
@@ -236,6 +151,5 @@ export default defineConfig({
     await new Promise((resolve) => setTimeout(resolve, 100));
     injectLauncher();
     installCoreNodeModules();
-    // pkgToBinaries();
   },
 });
