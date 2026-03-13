@@ -5,8 +5,9 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsup",
-    "build:resource": "tsup",
-    "dev": "cd app/langchain-serve && pnpm dev && cd ../pty-host && pnpm dev"
+    "build:mac": "CORE_PTY_PREBUILD=darwin-arm64 tsup",
+    "build:win": "CORE_PTY_PREBUILD=win32-x64 tsup",
+    "build:linux": "CORE_PTY_PREBUILD=linux-x64 tsup"
   },
   "keywords": [],
   "author": "",

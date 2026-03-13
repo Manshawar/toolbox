@@ -1,6 +1,5 @@
 {
   "sqlite_db_name": "app.db",
   "api_port": 8264,
-  "pty_port": 8265,
   "store_name": "store.json"
 }

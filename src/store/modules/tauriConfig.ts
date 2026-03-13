@@ -5,19 +5,16 @@ import { store } from "..";
 export interface TauriAppConfig {
   sqlite_db_name: string;
   api_port: number;
-  pty_port: number;
   store_name: string;
 }
 
 const DEFAULT_SQLITE_DB_NAME = "test.db";
 const DEFAULT_API_PORT = 8264;
-const DEFAULT_PTY_PORT = 8265;
 const DEFAULT_STORE_NAME = "";
 const useTauriConfigStore = defineStore("tauriConfig", {
   state: (): TauriAppConfig => ({
     sqlite_db_name: DEFAULT_SQLITE_DB_NAME,
     api_port: DEFAULT_API_PORT,
-    pty_port: DEFAULT_PTY_PORT,
     store_name: DEFAULT_STORE_NAME,
   }),
   getters: {
@@ -34,7 +31,7 @@ const useTauriConfigStore = defineStore("tauriConfig", {
   persist: {
     key: "tauriConfig",
     storage: localStorage,
-    pick: ["sqlite_db_name", "api_port", "pty_port"],
+    pick: ["sqlite_db_name", "api_port"],
   },
 });
 

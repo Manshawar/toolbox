@@ -1,8 +1,8 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use tauri::Manager;
 mod config;
+mod core;
 mod invoke;
-mod sidecar;
 mod store;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -19,18 +19,18 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
-        .manage(sidecar::SidecarPorts::default())
+        .manage(core::CorePorts::default())
         .setup(|app| {
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             {
                 let skip = std::env::var("TAURI_SKIP_SIDECAR").as_deref() == Ok("1");
                 if skip {
-                    eprintln!("[sidecar] 已跳过pkg打包（TAURI_SKIP_SIDECAR=1），");
-                    sidecar::write_sidecar_env_when_skip(app.handle());
+                    eprintln!("[core] TAURI_SKIP_SIDECAR=1，不启动 Node 服务，已写入 .env 供自启");
+                    core::write_core_env_when_skip(app.handle());
                 } else {
-                    eprintln!("[sidecar] 准备启动 core 子进程...");
-                    if let Err(e) = sidecar::start_sidecars_on_setup(app.handle()) {
-                        eprintln!("[sidecar] 启动失败: {}", e);
+                    eprintln!("[core] 准备启动 Node 服务...");
+                    if let Err(e) = core::start_core_on_setup(app.handle()) {
+                        eprintln!("[core] 启动失败: {}", e);
                     }
                 }
             }

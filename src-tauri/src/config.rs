@@ -12,7 +12,6 @@ fn default_json() -> Value {
     let mut m = Map::new();
     m.insert("sqlite_db_name".into(), Value::String(String::new()));
     m.insert("api_port".into(), Value::Number(Number::from(0)));
-    m.insert("pty_port".into(), Value::Number(Number::from(0)));
     m.insert("store_name".into(), Value::String(String::new()));
     Value::Object(m)
 }
@@ -38,8 +37,6 @@ pub fn load_config_json(app: &AppHandle) -> Value {
         .or_insert_with(|| Value::String(String::new()));
     obj.entry("api_port")
         .or_insert_with(|| Value::Number(Number::from(0)));
-    obj.entry("pty_port")
-        .or_insert_with(|| Value::Number(Number::from(0)));
     obj.entry("store_name")
         .or_insert_with(|| Value::String(String::new()));
     Value::Object(obj)
@@ -63,16 +60,6 @@ pub fn get_api_port(app: &AppHandle) -> u16 {
         .map(|n| n as u16)
         .filter(|&n| n != 0)
         .unwrap_or(8264)
-}
-
-/// 供 sidecar 等内部使用。配置为 0 或缺失时 fallback 为 8265 以保证运行。
-pub fn get_pty_port(app: &AppHandle) -> u16 {
-    load_config_json(app)
-        .get("pty_port")
-        .and_then(Value::as_u64)
-        .map(|n| n as u16)
-        .filter(|&n| n != 0)
-        .unwrap_or(8265)
 }
 
 /// 供 sidecar 等内部使用；与 app.db 同目录的 Tauri Store 文件名。配置为空时 fallback 为 store.json。

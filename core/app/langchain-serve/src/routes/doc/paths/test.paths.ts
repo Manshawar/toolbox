@@ -37,4 +37,21 @@ export const testPaths = {
       },
     },
   },
+  "/test/child-process": {
+    get: {
+      tags: ["Test"],
+      summary: "测试子进程",
+      description: "测试子进程是否能正常运行",
+      responses: {
+        "200": {
+          description: "子进程运行结果",
+          content: {
+            "application/json": {
+              schema: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+  },
 } as const;

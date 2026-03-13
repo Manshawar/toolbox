@@ -1,5 +1,15 @@
 <template>
   <el-card style="padding: 30px">
+    <div v-if="swaggerUrl" class="mb-4">
+      <el-alert type="info" :closable="false">
+        <template #title>
+          <span>Swagger 地址：</span>
+          <a :href="swaggerUrl" target="_blank" class="text-blue-500 underline">
+            {{ swaggerUrl }}
+          </a>
+        </template>
+      </el-alert>
+    </div>
     <div class="mb-4 flex flex-wrap gap-2">
       <el-button @click="testHandler">测试链接</el-button>
       <el-button @click="insertDataHandler">插入数据</el-button>
@@ -16,13 +26,26 @@
   </el-card>
 </template>
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { testLink } from '@/server/test';
 import { insertData, queryData } from '@/sql';
 import { getStore } from '@/tauriStore';
+
 const resultLabel = ref('');
 const result = ref('');
+const swaggerUrl = ref('');
+
+onMounted(async () => {
+  try {
+    const res = await testLink();
+    if (res && typeof res.url === 'string') {
+      swaggerUrl.value = res.url;
+    }
+  } catch (e) {
+    console.error('[menu2] 获取 swagger 地址失败', e);
+  }
+});
 const testNodeHandler = async () => {
   try {
     const output = await invoke<{ stdout: string; stderr: string; success: boolean }>(

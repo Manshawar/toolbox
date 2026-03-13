@@ -31,7 +31,3 @@ export async function run(options?: { port?: number }): Promise<void> {
   });
 }
 
-run().catch((err) => {
-  logger.error(err, "langchain-serve failed to start");
-  process.exitCode = 1;
-});

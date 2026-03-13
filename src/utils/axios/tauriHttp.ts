@@ -6,21 +6,18 @@ import { fetch } from "@tauri-apps/plugin-http";
 import { store } from "@/store";
 import { useTauriConfigStore } from "@/store/modules/tauriConfig";
 
-function getConfigPorts(): { api_port: number; pty_port: number } {
-  const s = useTauriConfigStore(store);
-  return { api_port: s.api_port, pty_port: s.pty_port };
+function getApiPort(): number {
+  return useTauriConfigStore(store).api_port;
 }
 
 /** 获取 API baseURL（来自 config，已含 sidecar 覆盖） */
 export function getApiBaseUrl(): string {
-  const { api_port } = getConfigPorts();
-  return `http://127.0.0.1:${api_port}`;
+  return `http://127.0.0.1:${getApiPort()}`;
 }
 
-/** 获取 PTY baseURL（来自 config，已含 sidecar 覆盖） */
+/** 获取 PTY baseURL（与 API 共用同一端口） */
 export function getPtyBaseUrl(): string {
-  const { pty_port } = getConfigPorts();
-  return `http://127.0.0.1:${pty_port}`;
+  return getApiBaseUrl();
 }
 
 /** 使用 tauri-plugin-http 请求 API 侧车；path 为相对路径，如 "/health" */

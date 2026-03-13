@@ -8,7 +8,7 @@ use std::process::Command;
 use tauri::Manager;
 
 use crate::config;
-use crate::sidecar;
+use crate::core;
 
 /// 应用级命令（可后续拆到 `app` 子模块）
 #[tauri::command]
@@ -120,17 +120,15 @@ pub fn run_npm_runtime(app: tauri::AppHandle, args: Vec<String>) -> Result<NodeR
     })
 }
 
-/// 返回 config（settings.json）；若已启动 sidecar 则用其分配端口覆盖 api_port / pty_port，前端只调此一次即可。
+/// 返回 config（settings.json）；若已启动 core 则用其分配端口覆盖 api_port，前端只调此一次即可。
 #[tauri::command]
 pub fn get_config(app: tauri::AppHandle) -> Value {
     let mut val = config::load_config_json(&app);
-    if let Some(ports) = app.try_state::<sidecar::SidecarPorts>() {
+    if let Some(ports) = app.try_state::<core::CorePorts>() {
         let api = *ports.api_port.lock().unwrap();
-        let pty = *ports.pty_port.lock().unwrap();
-        if let (Some(a), Some(p)) = (api, pty) {
+        if let Some(a) = api {
             if let Value::Object(ref mut m) = val {
                 m.insert("api_port".into(), Value::Number(Number::from(a)));
-                m.insert("pty_port".into(), Value::Number(Number::from(p)));
             }
         }
     }

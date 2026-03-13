@@ -1,9 +1,8 @@
 /**
- * Core 侧车构建：仅依赖 tsup。
- * 1. 打包 langchain-serve + pty-host 到 src-tauri/resources/core/
- * 2. 注入 launcher (build/index.js) 为 resources/core/index.js
- * 3. 安装不可打包的原生依赖到 resources/core/node_modules
- * 启动由 Tauri 用内置 Node (help/nodeRuntime) 执行 index.js，不再使用 pkg 二进制。
+ * Core 构建：仅依赖 tsup。
+ * 1. 直接将根目录下的 index.ts 打包为 src-tauri/resources/core/index.js
+ * 2. 安装不可打包的原生依赖到 src-tauri/resources/core/node_modules
+ * 由 Tauri 使用内置 Node (help/nodeRuntime) 执行 resources/core/index.js 作为唯一入口。
  */
 import { defineConfig } from "tsup";
 import { execSync } from "child_process";
@@ -14,20 +13,6 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const RESOURCES_CORE = path.join(__dirname, "..", "src-tauri", "resources", "core");
-
-/** 将 launcher 脚本（build/index.js）写入 resources/core，作为入口 */
-function injectLauncher() {
-  const launcherPath = path.join(__dirname, "build", "index.js");
-  const distPath = path.join(RESOURCES_CORE, "index.js");
-  if (!fs.existsSync(launcherPath)) {
-    console.error("[core] launcher 不存在: " + launcherPath);
-    process.exit(1);
-  }
-  const content = "#!/usr/bin/env node\n" + fs.readFileSync(launcherPath, "utf8");
-  fs.mkdirSync(RESOURCES_CORE, { recursive: true });
-  fs.writeFileSync(distPath, content, "utf8");
-  console.log("[core] 已写入 resources/core/index.js (launcher)");
-}
 
 /** 必须随包分发的依赖：better-sqlite3（含 .node 原生）、node-pty、ws（pty-host 用，未打进 bundle） */
 const CORE_NATIVE_DEPS: Record<string, string> = {
@@ -60,22 +45,38 @@ function installCoreNodeModules() {
   }
 }
 
-/** 裁剪 node_modules：只保留当前平台 node-pty prebuild（约省 45MB），并删除文档文件 */
+/** 解析要保留的 node-pty prebuild 目录名：优先环境变量，未指定则用本机 platform-arch */
+function getKeepPrebuild(): string {
+  if (process.env.CORE_PTY_PREBUILD) return process.env.CORE_PTY_PREBUILD;
+  const t = process.env.SIDECAR_TARGET;
+  if (t) {
+    const map: Record<string, string> = {
+      "aarch64-apple-darwin": "darwin-arm64",
+      "x86_64-apple-darwin": "darwin-x64",
+      "x86_64-pc-windows-msvc": "win32-x64",
+      "aarch64-pc-windows-msvc": "win32-arm64",
+      "x86_64-unknown-linux-gnu": "linux-x64",
+      "aarch64-unknown-linux-gnu": "linux-arm64",
+    };
+    if (map[t]) return map[t];
+  }
+  const platform = process.platform;
+  const arch = process.arch === "x64" ? "x64" : process.arch === "arm64" ? "arm64" : process.arch;
+  return `${platform}-${arch}`;
+}
+
+/** 裁剪 node_modules：.bin 必删；node-pty 只保留 getKeepPrebuild() 对应平台（指定则用指定，否则本机） */
 function pruneCoreNodeModules() {
   const nm = path.join(RESOURCES_CORE, "node_modules");
   if (!fs.existsSync(nm)) return;
 
-  // 删除 .bin（npm 的符号链接），避免 Tauri 打包时报 "resource path .bin/semver doesn't exist"；运行时只需 require()，不需要 CLI
   const binDir = path.join(nm, ".bin");
   if (fs.existsSync(binDir)) {
     fs.rmSync(binDir, { recursive: true });
     console.log("[core] 已删除 node_modules/.bin（避免 Tauri 打包报错）");
   }
 
-  const platform = process.platform;
-  const arch = process.arch;
-  const keepPrebuild = `${platform}-${arch === "x64" ? "x64" : arch === "arm64" ? "arm64" : arch}`;
-
+  const keepPrebuild = getKeepPrebuild();
   const ptyPrebuilds = path.join(nm, "node-pty", "prebuilds");
   if (fs.existsSync(ptyPrebuilds)) {
     const dirs = fs.readdirSync(ptyPrebuilds, { withFileTypes: true }).filter((d: fs.Dirent) => d.isDirectory());
@@ -83,7 +84,7 @@ function pruneCoreNodeModules() {
       if (d.name !== keepPrebuild) {
         const full = path.join(ptyPrebuilds, d.name);
         fs.rmSync(full, { recursive: true });
-        console.log("[core] 已删除 node-pty/prebuilds/" + d.name + "（非本机平台）");
+        console.log("[core] 已删除 node-pty/prebuilds/" + d.name + "（非本机/指定平台）");
       }
     }
   }
@@ -115,9 +116,7 @@ function pruneCoreNodeModules() {
 }
 
 export default defineConfig({
-  entry: {
-    "langchain-serve": "app/langchain-serve/src/index.ts",
-  },
+  entry: ["index.ts"],
   outDir: "../src-tauri/resources/core",
   format: ["cjs"],
   splitting: false,
@@ -141,7 +140,7 @@ export default defineConfig({
   // 仅保留无法打包的原生模块在 node_modules，其余打进 bundle
   external: ["better-sqlite3", "node-pty"],
   esbuildOptions(options, context) {
-    // 从 sidecars 目录解析 node_modules，保证 monorepo 下能找到依赖
+    // 从 core 目录解析 node_modules，保证 monorepo 下能找到依赖
     options.absWorkingDir = __dirname;
     options.banner = {
       js: "#!/usr/bin/env node",
@@ -149,7 +148,6 @@ export default defineConfig({
   },
   onSuccess: async () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
-    injectLauncher();
     installCoreNodeModules();
   },
 });

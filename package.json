@@ -2,17 +2,20 @@
   "name": "langchainapp",
   "private": true,
   "version": "0.1.0",
-  "type": "module",              
+  "type": "module",
   "scripts": {
     "dev:web": "vite",
-    "dev:app": "pnpm run build:sidecar && pnpm tauri dev",
-    "dev:init": "concurrently -n api,app \"cross-env TAURI_SKIP_SIDECAR=1 pnpm tauri dev\"",
-    "dev": "concurrently -n api,app \"cross-env TAURI_SKIP_SIDECAR=1 pnpm tauri dev\" \"pnpm -C sidecars/app/langchain-serve run dev\"",
-    "dev:serve": "pnpm -C sidecars/app/langchain-serve run dev",
-    "dev:tauri": "pnpm run build:sidecar && pnpm tauri dev",
+    "dev": "cross-env TAURI_SKIP_SIDECAR=1 pnpm tauri dev",
+    "dev:app": "pnpm run build:core && pnpm tauri dev",
     "build": "vue-tsc --noEmit && vite build",
-    "build:sidecar": "pnpm -C core run build",
-    "build:app": "pnpm run build:sidecar && pnpm tauri build"
+    "build:core": "pnpm -C core run build",
+    "build:core:mac": "pnpm -C core run build:mac",
+    "build:core:win": "pnpm -C core run build:win",
+    "build:core:linux": "pnpm -C core run build:linux",
+    "build:app": "pnpm run build:core && pnpm tauri build",
+    "build:app:mac": "pnpm run build:core:mac && pnpm tauri build --target aarch64-apple-darwin",
+    "build:app:win": "pnpm run build:core:win && pnpm tauri build --target x86_64-pc-windows-msvc",
+    "build:app:linux": "pnpm run build:core:linux && pnpm tauri build --target x86_64-unknown-linux-gnu"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",
