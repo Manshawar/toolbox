@@ -16,7 +16,7 @@
     "build:core:linux": "pnpm -C core run build:linux",
     "build:app": "pnpm run init:runtime && pnpm run build:core && pnpm tauri build",
     "build:app:mac": "NODE_RUNTIME_TARGET=aarch64-apple-darwin pnpm run init:runtime && pnpm run build:core:mac && pnpm tauri build --target aarch64-apple-darwin",
-    "build:app:win": "NODE_RUNTIME_TARGET=x86_64-pc-windows-msvc pnpm run init:runtime && pnpm run build:core:win && pnpm tauri build --target x86_64-pc-windows-msvc",
+    "build:app:win": "pnpm run init:runtime && pnpm run build:core:win && pnpm tauri build --target x86_64-pc-windows-msvc",
     "build:app:linux": "NODE_RUNTIME_TARGET=x86_64-unknown-linux-gnu pnpm run init:runtime && pnpm run build:core:linux && pnpm tauri build --target x86_64-unknown-linux-gnu"
   },
   "dependencies": {

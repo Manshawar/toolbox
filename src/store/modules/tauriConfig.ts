@@ -31,7 +31,7 @@ const useTauriConfigStore = defineStore("tauriConfig", {
   persist: {
     key: "tauriConfig",
     storage: localStorage,
-    pick: ["sqlite_db_name", "api_port"],
+    pick: ["sqlite_db_name"],
   },
 });
 

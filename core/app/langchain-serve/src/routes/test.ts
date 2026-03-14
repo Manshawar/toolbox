@@ -66,11 +66,15 @@ testApp.get("/child-process", async (c) => {
 
 /** 返回 swagger UI 地址，供前端展示（点击可打开） */
 testApp.get("/swagger-url", (c) => {
-  const host = getHost();
-  const port = getApiPort();
-  const base = `http://${host}:${port}`;
-  const url = `${base}/ui`;
-  return c.json({ url, base });
+  try {
+    const host = getHost();
+    const port = getApiPort();
+    const base = `http://${host}:${port}`;
+    const url = `${base}/ui`;
+    return c.json({ url, base });
+  } catch (e) {
+    return c.json({ error: String(e), hint: "API_PORT 或 env 异常" }, 500);
+  }
 });
 
 export function registerTestRoutes(app: Hono): void {

@@ -101,7 +101,6 @@ const interceptor: AxiosInterceptor = {
 
 /** baseURL 由 vite.config 注入（VITE_API_BASE_URL / VITE_PTY_BASE_URL），端口不在此处参与 */
 const apiBaseURL = import.meta.env?.VITE_API_BASE_URL ?? "";
-const ptyBaseURL = import.meta.env?.VITE_PTY_BASE_URL ?? "";
 
 function createAxios(opt?: Partial<CreateAxiosOptions>) {
   return new IAxios({
@@ -122,13 +121,9 @@ function createAxios(opt?: Partial<CreateAxiosOptions>) {
 /** 默认请求实例，直连 langchain-serve（baseURL 由 Vite / applySidecarPorts 注入） */
 export const request = createAxios();
 
-/** PTY 服务请求实例，直连 pty-host；WebSocket 需用 new WebSocket(ptyBaseURL) */
-export const ptyWs = createAxios({ baseURL: ptyBaseURL });
-
 /** 基于 tauri-plugin-http 的封装（与 request/ptyWs 解耦），见 tauriHttp.ts */
 export {
   getApiBaseUrl,
   getPtyBaseUrl,
   fetchApi,
-  fetchPty,
 } from "./tauriHttp";

@@ -16,6 +16,7 @@
       <el-button @click="queryDataHandler">查询数据</el-button>
       <el-button @click="getAllStoreHandler">获取全部 Store</el-button>
       <el-button @click="testNodeHandler">测试 Node</el-button>
+      <el-button @click="testHealthHandler">健康检查</el-button>
     </div>
     <div v-if="resultLabel" class="mt-4">
       <div class="mb-1 text-sm text-gray-500">{{ resultLabel }}</div>
@@ -28,6 +29,7 @@
 import { onMounted, ref } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import { testLink } from '@/server/test';
+import { fetchApi } from '@/utils/axios';
 import { insertData, queryData } from '@/sql';
 import { getStore } from '@/tauriStore';
 
@@ -38,10 +40,7 @@ const swaggerUrl = ref('');
 onMounted(async () => {
   try {
     const res = await testLink();
-    console.log('res', res);
-    if (res && typeof res.url === 'string') {
-      swaggerUrl.value = res.url;
-    }
+    if (res?.url) swaggerUrl.value = res.url;
   } catch (e) {
     console.error('[menu2] 获取 swagger 地址失败', e);
   }
@@ -68,8 +67,8 @@ const testHandler = async () => {
   try {
     const res = await testLink();
     setResult('测试链接', res);
-  } catch (e) {
-    setResult('测试链接', { error: String(e) });
+  } catch (e: unknown) {
+    setResult('测试链接', { error: e instanceof Error ? e.message : String(e) });
   }
 };
 const insertDataHandler = async () => {
@@ -99,5 +98,12 @@ const getAllStoreHandler = async () => {
     setResult('全部 Store', { error: String(e) });
   }
 };
-
+const testHealthHandler = async () => {
+  try {
+    const res = await fetchApi('/health', { method: 'GET' });
+    setResult('健康检查', res);
+  } catch (e) {
+    setResult('健康检查', { error: String(e) });
+  }
+};
 </script>
