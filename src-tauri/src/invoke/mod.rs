@@ -22,7 +22,7 @@ pub fn get_platform() -> &'static str {
     std::env::consts::OS
 }
 
-/// Node 侧车执行结果（app.shell().sidecar("node")）
+/// Node 侧车执行结果（app.shell().sidecar("toolbox_node")）
 #[derive(Debug, Serialize, Deserialize)]
 pub struct NodeRuntimeOutput {
     pub stdout: String,
@@ -33,7 +33,7 @@ pub struct NodeRuntimeOutput {
 /// 使用 Node 侧车执行，参数同 node 命令行（如 ["-e", "console.log(1)"]）
 #[tauri::command]
 pub async fn run_node_runtime(app: tauri::AppHandle, args: Vec<String>) -> Result<NodeRuntimeOutput, String> {
-    let sidecar = app.shell().sidecar("node").map_err(|e| e.to_string())?;
+    let sidecar = app.shell().sidecar("toolbox_node").map_err(|e| e.to_string())?;
     let output = sidecar
         .args(args)
         .output()

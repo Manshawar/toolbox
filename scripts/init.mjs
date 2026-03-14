@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 /**
- * 初始化 Node 侧车二进制（供 Tauri app.shell().sidecar("node") 使用）
+ * 初始化 Node 侧车二进制（供 Tauri app.shell().sidecar("toolbox_node") 使用）
  *
  * - 从阿里云镜像下载 Node 24，解压后在目录中查找 node 可执行文件
- * - 按 Tauri 命名写入 src-tauri/binaries/node-<target-triple>[.exe]
+ * - 按 Tauri 命名写入 src-tauri/binaries/toolbox_node-<target-triple>[.exe]（进程名显示为 toolbox_node）
  * - 缓存：scripts/version/（git 忽略），有 version 且包存在则跳过下载
  *
  * 用法：
@@ -184,13 +184,42 @@ async function main() {
       throw new Error(`[init] 解压目录中未找到 node: ${nodeExePath}`);
     }
 
-    // 3. 写入侧车二进制 node-<target-triple>[.exe]
+    // 3. 写入侧车二进制 toolbox_node-<target-triple>[.exe]
     const targetTriple = getRustTargetTriple();
-    const sidecarName = `node-${targetTriple}${isWin ? ".exe" : ""}`;
+    const sidecarName = `toolbox_node-${targetTriple}${isWin ? ".exe" : ""}`;
     const sidecarPath = path.join(CONFIG.binariesDir, sidecarName);
     await fs.promises.mkdir(CONFIG.binariesDir, { recursive: true });
     await fs.promises.copyFile(nodeExePath, sidecarPath);
     console.log(`[init] 已写入侧车: ${sidecarPath}`);
+
+    // 4. Windows：用 rcedit 改 exe 显示名与图标
+    //    - 显示名：任务管理器读 FileDescription，否则会显示「Node.js JavaScript Runtime」
+    //    - 图标：使用 src-tauri/icons/toolbox_node.ico（若无则用 icon.ico），任务栏/资源管理器中显示
+    //    macOS/Linux：进程名由可执行文件名 toolbox_node-<target> 决定，无需处理
+    if (isWin) {
+      try {
+        const { rcedit } = await import("rcedit");
+        const iconsDir = path.join(ROOT_DIR, "src-tauri", "icons");
+        const iconPath =
+          fs.existsSync(path.join(iconsDir, "toolbox_node.ico"))
+            ? path.join(iconsDir, "toolbox_node.ico")
+            : fs.existsSync(path.join(iconsDir, "icon.ico"))
+              ? path.join(iconsDir, "icon.ico")
+              : null;
+        const opts = {
+          "version-string": {
+            FileDescription: "Toolbox Node",
+            ProductName: "Toolbox Node",
+          },
+        };
+        if (iconPath) opts.icon = iconPath;
+        await rcedit(sidecarPath, opts);
+        console.log(`[init] 已设置 exe 显示名: Toolbox Node` + (iconPath ? `，图标: ${path.basename(iconPath)}` : ""));
+      } catch (e) {
+        console.warn("[init] 修改 exe 版本信息失败（任务管理器仍会显示 Node.js），可忽略:", e.message);
+      }
+    }
+
     console.log(`[init] 完成 | 侧车: ${sidecarName}`);
   } finally {
     await fs.promises.rm(tmpRoot, { recursive: true, force: true }).catch(() => {});

@@ -3,7 +3,7 @@
 //! ## 正常流程
 //! 1. 解析 core 目录（打包后 resource_dir，开发时 target/…/resources/core）。
 //! 2. 分配端口，构造环境变量（API_PORT、APP_DATA_DIR 等）。
-//! 3. 通过 `app.shell().sidecar("node")` 启动：`node index.js`，环境变量与工作目录注入。
+//! 3. 通过 `app.shell().sidecar("toolbox_node")` 启动：`toolbox_node index.js`，环境变量与工作目录注入。
 //!
 //! ## 跳过侧车时（TAURI_SKIP_SIDECAR=1 或未找到 core/侧车）
 //! 仅向 `core/.env` 写入与 [build_core_env] 一致的内容，供本地自启 core 使用。
@@ -212,10 +212,10 @@ pub fn start_core_on_setup(app: &AppHandle) -> Result<(), String> {
         log_dev_paths(&env_vars);
     }
 
-    let sidecar = match app.shell().sidecar("node") {
+    let sidecar = match app.shell().sidecar("toolbox_node") {
         Ok(cmd) => cmd,
         Err(e) => {
-            eprintln!("[core] Node 侧车未找到（请先执行 pnpm run init:runtime）: {}", e);
+            eprintln!("[core] toolbox_node 侧车未找到（请先执行 pnpm run init:runtime）: {}", e);
             write_core_env_when_skip(app);
             return Ok(());
         }
@@ -230,7 +230,7 @@ pub fn start_core_on_setup(app: &AppHandle) -> Result<(), String> {
     {
         Ok((mut rx, child)) => {
             let pid = child.pid();
-            eprintln!("[core] Node 侧车已启动 core | 端口 {}", api_port);
+            eprintln!("[core] toolbox_node 侧车已启动 core | 端口 {}", api_port);
             if let Some(state) = app.try_state::<CorePorts>() {
                 *state.api_port.lock().unwrap() = Some(api_port);
             }
