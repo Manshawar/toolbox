@@ -7,6 +7,12 @@ mod store;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Ctrl+C 时先终止 Node 侧车再退出，避免 Drop 来不及执行导致侧车残留
+    let _ = ctrlc::set_handler(|| {
+        core::kill_sidecar_by_pid();
+        std::process::exit(0);
+    });
+
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -20,6 +26,7 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
         .manage(core::CorePorts::default())
+        .manage(core::CoreSidecarChild::default())
         .setup(|app| {
             #[cfg(not(any(target_os = "android", target_os = "ios")))]
             {

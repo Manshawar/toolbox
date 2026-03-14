@@ -40,10 +40,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": [],
+    "externalBin": ["binaries/node"],
     "resources": [
       "config/settings.json",
-      "help/nodeRuntime",
       "resources/core"
     ]
   }

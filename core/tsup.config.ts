@@ -12,6 +12,20 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+/** 递归计算目录大小（字节），跨平台替代 du */
+function getDirSizeBytes(dir: string): number {
+  let total = 0;
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) total += getDirSizeBytes(full);
+      else total += fs.statSync(full).size;
+    }
+  } catch {}
+  return total;
+}
+
 const RESOURCES_CORE = path.join(__dirname, "..", "src-tauri", "resources", "core");
 
 /** 必须随包分发的依赖：better-sqlite3（含 .node 原生）、node-pty、ws（pty-host 用，未打进 bundle） */
@@ -21,15 +35,54 @@ const CORE_NATIVE_DEPS: Record<string, string> = {
   "ws": "^8.18.0",
 };
 
-function installCoreNodeModules() {
-  const pkgDest = path.join(RESOURCES_CORE, "package.json");
-  const minimalPkg = {
+/** 当前要生成的 package.json 内容（用于与已有文件对比） */
+function getMinimalPkg() {
+  return {
     name: "core",
     version: "1.0.0",
     private: true,
-    dependencies: CORE_NATIVE_DEPS,
+    dependencies: { ...CORE_NATIVE_DEPS },
   };
-  fs.writeFileSync(pkgDest, JSON.stringify(minimalPkg, null, 2), "utf8");
+}
+
+/**
+ * 验证 src-tauri/resources/core/package.json 的依赖是否与当前 CORE_NATIVE_DEPS 一致。
+ * 一致则视为依赖未发生变化，可复用已有 node_modules。
+ */
+function dependenciesUnchanged(pkgPath: string): boolean {
+  try {
+    const raw = fs.readFileSync(pkgPath, "utf8");
+    const existing = JSON.parse(raw) as Record<string, unknown>;
+    const minimal = getMinimalPkg() as Record<string, unknown>;
+    if (existing.name !== minimal.name || existing.version !== minimal.version || existing.private !== minimal.private) {
+      return false;
+    }
+    const a = existing.dependencies as Record<string, string> | undefined;
+    const b = minimal.dependencies as Record<string, string>;
+    if (!a || Object.keys(a).length !== Object.keys(b).length) return false;
+    for (const k of Object.keys(b)) {
+      if (a[k] !== b[k]) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function installCoreNodeModules() {
+  const pkgPath = path.join(RESOURCES_CORE, "package.json");
+  const nodeModulesDir = path.join(RESOURCES_CORE, "node_modules");
+  const minimalPkg = getMinimalPkg();
+
+  // 在 src-tauri/resources/core 下做两重验证：① 依赖是否发生变化  ② node_modules 是否存在
+  const depsUnchanged = fs.existsSync(pkgPath) && dependenciesUnchanged(pkgPath);
+  const nodeModulesExists = fs.existsSync(nodeModulesDir);
+  if (depsUnchanged && nodeModulesExists) {
+    console.log("[core] 提示：resources/core 依赖未变化且 node_modules 已存在，跳过 npm install");
+    return;
+  }
+
+  fs.writeFileSync(pkgPath, JSON.stringify(minimalPkg, null, 2), "utf8");
   console.log("[core] 已写入 resources/core/package.json（仅原生依赖）");
   try {
     // 不加 --ignore-scripts，让 better-sqlite3 的 postinstall 执行，生成 build/*.node 原生二进制
@@ -108,11 +161,9 @@ function pruneCoreNodeModules() {
   }
   rmDocFiles(nm, 0);
 
-  try {
-    const out = execSync(`du -sm "${nm}"`, { encoding: "utf8", cwd: RESOURCES_CORE });
-    const sizeMB = out.split(/\s/)[0] ?? "?";
-    console.log("[core] 裁剪后 node_modules 约 " + sizeMB + " MB");
-  } catch {}
+  const sizeBytes = getDirSizeBytes(nm);
+  const sizeMB = (sizeBytes / 1024 / 1024).toFixed(1);
+  console.log("[core] 裁剪后 node_modules 约 " + sizeMB + " MB");
 }
 
 export default defineConfig({
@@ -121,7 +172,8 @@ export default defineConfig({
   format: ["cjs"],
   splitting: false,
   sourcemap: true,
-  clean: true,
+  // 设为 false：clean 会清空整个 outDir，会删掉 package.json 与 node_modules，导致无法跳过安装
+  clean: false,
   bundle: true,
   platform: "node",
   target: "node24",

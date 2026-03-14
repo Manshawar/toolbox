@@ -4,6 +4,7 @@
   "description": "侧车主运行时：tsup 打包到 resources/core，由 Tauri 内置 Node 启动",
   "main": "dist/index.js",
   "scripts": {
+    "dev": "tsx watch ./index.ts",
     "build": "tsup",
     "dev:watch": "tsup --watch",
     "build:mac": "CORE_PTY_PREBUILD=darwin-arm64 tsup",

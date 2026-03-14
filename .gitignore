@@ -28,3 +28,6 @@ dist-ssr
 
 # Tauri sidecar 二进制（pkg 产出）
 src-tauri/binaries/
+
+# Node Runtime 下载缓存（含 version 与各平台压缩包）
+scripts/version/
