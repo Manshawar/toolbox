@@ -54,4 +54,21 @@ export const testPaths = {
       },
     },
   },
+  "/test/swagger-url": {
+    get: {
+      tags: ["Test"],
+      summary: "返回 swagger UI 地址",
+      description: "返回 swagger UI 地址，供前端展示（点击可打开）",
+      responses: {
+        "200": {
+          description: "swagger UI 地址",
+          content: {
+            "application/json": {
+              schema: { type: "string" },
+            },
+          },
+        },
+      },
+    },
+  },
 } as const;

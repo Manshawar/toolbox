@@ -38,6 +38,7 @@ const swaggerUrl = ref('');
 onMounted(async () => {
   try {
     const res = await testLink();
+    console.log('res', res);
     if (res && typeof res.url === 'string') {
       swaggerUrl.value = res.url;
     }
