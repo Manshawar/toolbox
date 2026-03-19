@@ -34,9 +34,6 @@ pnpm run init:runtime
 |------|------|
 | `pnpm run build` | 仅构建前端 |
 | `pnpm run build:core` | 仅构建 core（当前平台） |
-| `pnpm run build:core:mac` | 构建 core（macOS） |
-| `pnpm run build:core:win` | 构建 core（Windows） |
-| `pnpm run build:core:linux` | 构建 core（Linux） |
 | `pnpm run build:app` | 构建完整应用（当前平台） |
 | `pnpm run build:app:mac` | 构建 macOS 应用（aarch64） |
 | `pnpm run build:app:win` | 构建 Windows 应用（x86_64） |

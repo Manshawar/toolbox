@@ -9,7 +9,7 @@
  *
  * 用法：
  *   node scripts/init.mjs
- *   NODE_RUNTIME_TARGET=x86_64-unknown-linux-gnu node scripts/init.mjs
+ *   node scripts/init.mjs --sidecar-target=x86_64-unknown-linux-gnu
  *   node scripts/init.mjs --target=x86_64-unknown-linux-gnu
  */
 
@@ -53,13 +53,15 @@ const RUST_TARGET_TO_NODE_PLATFORM = {
 // ---------------------------------------------------------------------------
 
 function getCliTarget() {
-  const arg = process.argv.slice(2).find((a) => a.startsWith("--target="));
+  const arg = process.argv
+    .slice(2)
+    .find((a) => a.startsWith("--sidecar-target=") || a.startsWith("--target="));
   return arg ? arg.split("=")[1] : undefined;
 }
 
 /** 解析当前需要下载的 Node 平台 id（darwin-arm64 / win-x64 / linux-x64 等） */
 function resolveNodePlatformId() {
-  const target = getCliTarget() || process.env.NODE_RUNTIME_TARGET || process.env.SIDECAR_TARGET || "";
+  const target = getCliTarget() || process.env.NODE_RUNTIME_TARGET || "";
   if (target && RUST_TARGET_TO_NODE_PLATFORM[target]) {
     return RUST_TARGET_TO_NODE_PLATFORM[target];
   }

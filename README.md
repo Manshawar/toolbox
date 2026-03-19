@@ -77,9 +77,6 @@ pnpm run build
 
 ```bash
 pnpm run build:core
-pnpm run build:core:mac
-pnpm run build:core:win
-pnpm run build:core:linux
 ```
 
 - 使用 tsup 将 `core/index.ts` 打包到 `src-tauri/resources/core/index.js`，并安装 core 所需原生依赖到 `resources/core/node_modules`。
@@ -302,9 +299,6 @@ pnpm dev:core         # 仅 core 开发（热重载）
 ```bash
 pnpm build            # 仅构建前端
 pnpm build:core       # 构建 core（当前平台）
-pnpm build:core:mac   # 构建 core（macOS）
-pnpm build:core:win   # 构建 core（Windows）
-pnpm build:core:linux # 构建 core（Linux）
 pnpm build:app        # 构建完整应用（当前平台）
 ```
 

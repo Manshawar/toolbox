@@ -12,6 +12,11 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+function getSidecarTargetFromCli(): string | undefined {
+  const arg = process.argv.slice(2).find((a) => a.startsWith("--sidecar-target="));
+  return arg ? arg.split("=")[1] : undefined;
+}
+
 /** 递归计算目录大小（字节），跨平台替代 du */
 function getDirSizeBytes(dir: string): number {
   let total = 0;
@@ -30,11 +35,13 @@ function getDirSizeBytes(dir: string): number {
 
 const RESOURCES_CORE = path.join(__dirname, "..", "src-tauri", "resources", "core");
 
-/** 必须随包分发的依赖：better-sqlite3（含 .node 原生）、node-pty、ws（pty-host 用，未打进 bundle） */
+/** 必须随包分发的依赖：原生依赖 + 运行时需要文件资源的依赖（如 swagger-ui 静态资源） */
 const CORE_NATIVE_DEPS: Record<string, string> = {
   "better-sqlite3": "^12.6.2",
   "node-pty": "^1.0.0",
   "ws": "^8.18.0",
+  "@fastify/swagger": "^9.7.0",
+  "@fastify/swagger-ui": "^5.2.5",
 };
 
 /** 当前要生成的 package.json 内容（用于与已有文件对比） */
@@ -100,10 +107,9 @@ function installCoreNodeModules() {
   }
 }
 
-/** 解析要保留的 node-pty prebuild 目录名：优先环境变量，未指定则用本机 platform-arch */
+/** 解析要保留的 node-pty prebuild 目录名：优先 --sidecar-target，其次 NODE_RUNTIME_TARGET，未指定则用本机 platform-arch */
 function getKeepPrebuild(): string {
-  if (process.env.CORE_PTY_PREBUILD) return process.env.CORE_PTY_PREBUILD;
-  const t = process.env.SIDECAR_TARGET;
+  const t = getSidecarTargetFromCli() || process.env.NODE_RUNTIME_TARGET;
   if (t) {
     const map: Record<string, string> = {
       "aarch64-apple-darwin": "darwin-arm64",
@@ -184,8 +190,6 @@ export default defineConfig({
   treeshake: true,
   noExternal: [
     'fastify',
-    '@fastify/swagger',
-    '@fastify/swagger-ui',
     '@fastify/cors',
     '@fastify/multipart',
     'fs-extra',
@@ -195,8 +199,8 @@ export default defineConfig({
     "pino",
     "pino-pretty",
   ],
-  // 仅保留无法打包的原生模块在 node_modules，其余打进 bundle
-  external: ["better-sqlite3", "node-pty"],
+  // 仅保留无法打包或需要运行时文件资源的模块在 node_modules，其余打进 bundle
+  external: ["better-sqlite3", "node-pty", "@fastify/swagger", "@fastify/swagger-ui"],
   esbuildOptions(options) {
     // 从 core 目录解析 node_modules，保证 monorepo 下能找到依赖
     options.absWorkingDir = __dirname;

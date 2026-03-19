@@ -4,8 +4,8 @@
  */
 import Fastify from "fastify";
 import pinoPretty from "pino-pretty";
-// import swagger from "@fastify/swagger";
-// import swaggerUi from "@fastify/swagger-ui";
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { registerRoutes } from "./routes";
@@ -61,31 +61,33 @@ function buildLoggerConfig() {
 export async function createApp() {
   const app = Fastify({ logger: buildLoggerConfig() });
 
-  // 注册 Swagger/OpenAPI 插件（自动生成文档）
-  // await app.register(swagger, {
-  //   openapi: {
-  //     info: {
-  //       title: "langchain-serve API",
-  //       description: "langchain-serve 侧车服务 API 文档",
-  //       version: "1.0.0",
-  //     },
-  //     tags: [
-  //       { name: "健康", description: "健康检查" },
-  //       { name: "Test", description: "DB / Store 等测试接口" },
-  //       { name: "LangChain", description: "LangChain 功能接口" },
-  //     ],
-  //   },
-  // });
+  // 仅开发模式启用 Swagger UI，避免生产模式暴露文档页面。
+  if (isToolboxDevMode()) {
+    await app.register(swagger, {
+      openapi: {
+        info: {
+          title: "langchain-serve API",
+          description: "langchain-serve 侧车服务 API 文档",
+          version: "1.0.0",
+        },
+        tags: [
+          { name: "健康", description: "健康检查" },
+          { name: "Test", description: "DB / Store 等测试接口" },
+          { name: "LangChain", description: "LangChain 功能接口" },
+        ],
+      },
+    });
 
-  // // 注册 Swagger UI 插件（本地资源，不依赖 CDN）
-  // await app.register(swaggerUi, {
-  //   routePrefix: "/ui",
-  //   uiConfig: {
-  //     docExpansion: "list",
-  //     deepLinking: true,
-  //   },
-  //   staticCSP: true,
-  // });
+    // 使用本地静态资源（swagger-ui-dist），不依赖 CDN。
+    await app.register(swaggerUi, {
+      routePrefix: "/ui",
+      uiConfig: {
+        docExpansion: "list",
+        deepLinking: true,
+      },
+      staticCSP: true,
+    });
+  }
 
   // 注册 CORS
   await app.register(cors, {
