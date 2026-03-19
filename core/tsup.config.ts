@@ -88,6 +88,7 @@ function installCoreNodeModules() {
   const nodeModulesExists = fs.existsSync(nodeModulesDir);
   if (depsUnchanged && nodeModulesExists) {
     console.log("[core] 提示：resources/core 依赖未变化且 node_modules 已存在，跳过 npm install");
+    pruneCoreNodeModules();
     return;
   }
 
@@ -170,6 +171,18 @@ function pruneCoreNodeModules() {
     }
   }
   rmDocFiles(nm, 0);
+
+  // @fastify/send 的测试夹具包含 snowman(☃) 路径名，
+  // 在 WiX zh-CN(codepage 936) 下会导致 LGHT0311，运行时并不需要 test 目录。
+  const fastifySendTestDir = path.join(nm, "@fastify", "send", "test");
+  if (fs.existsSync(fastifySendTestDir)) {
+    try {
+      fs.rmSync(fastifySendTestDir, { recursive: true, force: true });
+      console.log("[core] 已删除 @fastify/send/test（避免 WiX codepage 936 路径编码失败）");
+    } catch {
+      console.error(`[core] 删除目录失败: ${fastifySendTestDir}`);
+    }
+  }
 
   const sizeBytes = getDirSizeBytes(nm);
   const sizeMB = (sizeBytes / 1024 / 1024).toFixed(1);

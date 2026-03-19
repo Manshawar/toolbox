@@ -40,7 +40,14 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/toolbox_node"],
+    "windows": {
+      "wix": {
+        "language": "zh-CN"
+      }
+    },
+    "externalBin": [
+      "binaries/toolbox_node"
+    ],
     "resources": [
       "config/settings.json",
       "resources/core"
