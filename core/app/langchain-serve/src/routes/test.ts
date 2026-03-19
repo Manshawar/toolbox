@@ -41,10 +41,7 @@ export async function registerTestRoutes(app: FastifyInstance): Promise<void> {
             },
           },
         },
-        handler: async (req, res) => {
-          res.header("Content-Type", "application/json; charset=utf-8");
-          return success(listTest());
-        },
+        handler: async () => success(listTest()),
       });
 
       // GET /test/store - 查询 Store
@@ -179,7 +176,9 @@ export async function registerTestRoutes(app: FastifyInstance): Promise<void> {
         },
         handler: async () => {
           const base = `http://${getHost()}:${getApiPort()}`;
-          return success({ url: `${base}/ui`, base });
+          const data = { url: `${base}/ui`, base };
+          const payload = success(data);
+          return payload;
         },
       });
     },

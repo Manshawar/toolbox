@@ -66,25 +66,48 @@ export async function createApp() {
   if (shouldLogResponse) {
     app.addHook("onSend", (request, reply, payload, done) => {
       try {
+        const shouldLog =
+          request.url === "/health" || request.url.startsWith("/test/");
+
         const payloadPreview = inspect(payload, {
           depth: 6,
           maxArrayLength: 50,
           breakLength: 140,
         });
-        app.log.debug(
-          {
-            method: request.method,
-            url: request.url,
-            statusCode: reply.statusCode,
-            payload: payloadPreview,
-          },
-          "api response"
-        );
+        if (shouldLog) {
+          app.log.info(
+            {
+              method: request.method,
+              url: request.url,
+              statusCode: reply.statusCode,
+              payload: payloadPreview,
+            },
+            "api response"
+          );
+        }
       } catch {
         // 不影响正常返回
       } finally {
         done();
       }
+    });
+
+    app.setErrorHandler((err, request, reply) => {
+      const shouldLog =
+        request.url === "/health" || request.url.startsWith("/test/");
+      if (shouldLog) {
+        app.log.error(
+          {
+            method: request.method,
+            url: request.url,
+            statusCode: reply.statusCode,
+            message: err instanceof Error ? err.message : String(err),
+          },
+          "api error"
+        );
+      }
+      // 交由 Fastify 的默认错误响应逻辑返回 500/错误体
+      reply.send(err);
     });
   }
 
