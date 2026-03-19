@@ -5,14 +5,14 @@
 import Fastify from "fastify";
 import path from "node:path";
 import { existsSync, mkdirSync } from "node:fs";
-import swagger from "@fastify/swagger";
-import swaggerUi from "@fastify/swagger-ui";
+// import swagger from "@fastify/swagger";
+// import swaggerUi from "@fastify/swagger-ui";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { registerRoutes } from "./routes";
 import { getApiPort, getHost, logConfig } from "./config/env";
 import { startWatchingStore } from "./services/storeService";
-import { getLogFilePath } from "./utils/logger";
+// import { getLogFilePath } from "./utils/logger";
 
 const LOG_LEVEL = (process.env.LOG_LEVEL || "info") as string;
 
@@ -40,33 +40,33 @@ const prettyOptions = {
 /**
  * 获取日志文件路径，确保目录存在
  */
-function ensureLogFilePath(): string {
-  const filePath = getLogFilePath();
-  if (filePath) {
-    const dir = path.dirname(filePath);
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  }
-  return filePath;
-}
+// function ensureLogFilePath(): string {
+//   const filePath = getLogFilePath();
+//   if (filePath) {
+//     const dir = path.dirname(filePath);
+//     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+//   }
+//   return filePath;
+// }
 
 /**
  * 构建 Fastify logger 配置（仅用官方支持的选项，不直接依赖 pino）
  * 支持：级别、开发环境 pino-pretty、可选写文件（LOG_PATH / LOG_DIR / APP_DATA_DIR）
  */
 function buildLoggerConfig(): Record<string, unknown> {
-  const logFilePath = ensureLogFilePath();
+  // const logFilePath = ensureLogFilePath();
   const level = LOG_LEVEL;
 
   // 有文件路径：控制台 + 文件双输出（通过 Pino transport targets，由 Fastify 传给底层 Pino）
-  if (logFilePath) {
-    const targets: Array<{ target: string; options?: Record<string, unknown>; level: string }> = [
-      usePinoPretty()
-        ? { target: "pino-pretty", options: prettyOptions, level }
-        : { target: "pino/file", options: { destination: 1 }, level }, // 1 = stdout
-      { target: "pino/file", options: { destination: logFilePath, append: true }, level },
-    ];
-    return { level, transport: { targets } };
-  }
+  // if (logFilePath) {
+  //   const targets: Array<{ target: string; options?: Record<string, unknown>; level: string }> = [
+  //     usePinoPretty()
+  //       ? { target: "pino-pretty", options: prettyOptions, level }
+  //       : { target: "pino/file", options: { destination: 1 }, level }, // 1 = stdout
+  //     { target: "pino/file", options: { destination: logFilePath, append: true }, level },
+  //   ];
+  //   return { level, transport: { targets } };
+  // }
 
   // 无文件：仅控制台
   return {
@@ -82,30 +82,30 @@ export async function createApp() {
   const app = Fastify({ logger: buildLoggerConfig() });
 
   // 注册 Swagger/OpenAPI 插件（自动生成文档）
-  await app.register(swagger, {
-    openapi: {
-      info: {
-        title: "langchain-serve API",
-        description: "langchain-serve 侧车服务 API 文档",
-        version: "1.0.0",
-      },
-      tags: [
-        { name: "健康", description: "健康检查" },
-        { name: "Test", description: "DB / Store 等测试接口" },
-        { name: "LangChain", description: "LangChain 功能接口" },
-      ],
-    },
-  });
+  // await app.register(swagger, {
+  //   openapi: {
+  //     info: {
+  //       title: "langchain-serve API",
+  //       description: "langchain-serve 侧车服务 API 文档",
+  //       version: "1.0.0",
+  //     },
+  //     tags: [
+  //       { name: "健康", description: "健康检查" },
+  //       { name: "Test", description: "DB / Store 等测试接口" },
+  //       { name: "LangChain", description: "LangChain 功能接口" },
+  //     ],
+  //   },
+  // });
 
-  // 注册 Swagger UI 插件（本地资源，不依赖 CDN）
-  await app.register(swaggerUi, {
-    routePrefix: "/ui",
-    uiConfig: {
-      docExpansion: "list",
-      deepLinking: true,
-    },
-    staticCSP: true,
-  });
+  // // 注册 Swagger UI 插件（本地资源，不依赖 CDN）
+  // await app.register(swaggerUi, {
+  //   routePrefix: "/ui",
+  //   uiConfig: {
+  //     docExpansion: "list",
+  //     deepLinking: true,
+  //   },
+  //   staticCSP: true,
+  // });
 
   // 注册 CORS
   await app.register(cors, {
@@ -146,12 +146,4 @@ export async function run(options?: { port?: number }): Promise<void> {
     app.log.error(err, "langchain-serve failed to start");
     process.exitCode = 1;
   }
-}
-
-// 直接运行时启动
-if (require.main === module) {
-  run().catch((err) => {
-    console.error("Unexpected error:", err);
-    process.exit(1);
-  });
 }

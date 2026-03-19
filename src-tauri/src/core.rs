@@ -91,6 +91,10 @@ fn is_dev() -> bool {
 /// 构造 core 进程环境变量：API_PORT；若有 app_data 则加 APP_DATA_DIR、SQLITE_DB_PATH、DB_PATH、STORE_PATH。
 pub fn build_core_env(app: &AppHandle, api_port: u16) -> Vec<(String, String)> {
     let mut env: Vec<(String, String)> = vec![("API_PORT".to_string(), api_port.to_string())];
+    // 打包后的 core 为单文件 bundle；开启 pino-pretty transport 会触发 thread-stream
+    // 查找 lib/worker.js，导致在 resources/core 下报 MODULE_NOT_FOUND。
+    // 这里统一关闭 pretty，避免 worker 线程依赖。
+    env.push(("LOG_PRETTY".to_string(), "0".to_string()));
 
     if let Ok(app_data) = app.path().app_data_dir() {
         let sql_name = config::get_sqlite_db_name(app);
