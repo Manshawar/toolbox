@@ -9,6 +9,7 @@ import multipart from "@fastify/multipart";
 import { registerRoutes } from "./routes";
 import { getApiPort, getHost, isToolboxDevMode, logConfig } from "./config/env";
 import { startWatchingStore } from "./services/storeService";
+import { inspect } from "node:util";
 // import { getLogFilePath } from "./utils/logger";
 
 const LOG_LEVEL = (process.env.LOG_LEVEL || "info") as string;
@@ -58,6 +59,34 @@ function buildLoggerConfig() {
  */
 export async function createApp() {
   const app = Fastify({ logger: buildLoggerConfig() });
+
+  // 统一打印接口返回值：用于定位“返回空对象但数组长度正常”等问题。
+  // 仅在 development 或显式开启开关时打印，避免生产刷屏。
+  const shouldLogResponse = isToolboxDevMode();
+  if (shouldLogResponse) {
+    app.addHook("onSend", (request, reply, payload, done) => {
+      try {
+        const payloadPreview = inspect(payload, {
+          depth: 6,
+          maxArrayLength: 50,
+          breakLength: 140,
+        });
+        app.log.debug(
+          {
+            method: request.method,
+            url: request.url,
+            statusCode: reply.statusCode,
+            payload: payloadPreview,
+          },
+          "api response"
+        );
+      } catch {
+        // 不影响正常返回
+      } finally {
+        done();
+      }
+    });
+  }
 
   // 仅开发模式启用 Swagger UI，避免生产模式暴露文档页面。
   if (isToolboxDevMode()) {

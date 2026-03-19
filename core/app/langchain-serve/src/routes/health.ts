@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { success } from "../utils/response";
 
 /**
  * 健康检查路由
@@ -15,11 +16,18 @@ export async function registerHealthRoutes(app: FastifyInstance): Promise<void> 
           description: "OK",
           type: "object",
           properties: {
-            ok: { type: "boolean", example: true },
+            code: { type: "number", example: 1 },
+            message: { type: "string", example: "ok" },
+            data: {
+              type: "object",
+              properties: {
+                ok: { type: "boolean", example: true },
+              },
+            },
           },
         },
       },
     },
-    handler: async () => ({ ok: true }),
+    handler: async () => success({ ok: true }),
   });
 }

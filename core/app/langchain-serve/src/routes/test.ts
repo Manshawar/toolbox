@@ -3,6 +3,7 @@ import { execFile } from "child_process";
 import { getStoreConfig } from "../services/storeService";
 import { listTest } from "../services/testService";
 import { getApiPort, getHost } from "../config/env";
+import { success } from "../utils/response";
 
 /**
  * Test 路由：测试数据库、配置、子进程等功能
@@ -18,15 +19,32 @@ export async function registerTestRoutes(app: FastifyInstance): Promise<void> {
           tags: ["Test"],
           summary: "查询 DB",
           description: "返回 test 表数据，需设置 DB_PATH",
+     
           response: {
             200: {
-              description: "test 表数据列表",
-              type: "array",
-              items: { type: "object" },
+              description: "统一返回结构",
+              type: "object",
+              properties: {
+                code: { type: "number" },
+                message: { type: "string" },
+                data: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "number" },
+                      name: { type: "string", nullable: true },
+                    },
+                  },
+                },
+              },
             },
           },
         },
-        handler: async () => listTest(),
+        handler: async (req, res) => {
+          res.header("Content-Type", "application/json; charset=utf-8");
+          return success(listTest());
+        },
       });
 
       // GET /test/store - 查询 Store
@@ -37,13 +55,17 @@ export async function registerTestRoutes(app: FastifyInstance): Promise<void> {
           description: "返回当前 store 配置，需设置 STORE_PATH",
           response: {
             200: {
-              description: "store 配置或 null",
+              description: "统一返回结构",
               type: "object",
-              nullable: true,
+              properties: {
+                code: { type: "number" },
+                message: { type: "string" },
+                data: { type: "object", nullable: true },
+              },
             },
           },
         },
-        handler: async () => getStoreConfig() ?? null,
+        handler: async () => success(getStoreConfig() ?? null),
       });
 
       // GET /test/child-process - 测试子进程
@@ -54,19 +76,26 @@ export async function registerTestRoutes(app: FastifyInstance): Promise<void> {
           description: "测试子进程是否能正常运行",
           response: {
             200: {
-              description: "子进程运行结果",
               type: "object",
               properties: {
-                ok: { type: "boolean" },
-                startedAt: { type: "number" },
-                finishedAt: { type: "number" },
-                durationMs: { type: "number" },
-                node: { type: "string" },
-                execPath: { type: "string" },
-                stdout: { type: "string" },
-                stderr: { type: "string" },
-                code: { type: "number", nullable: true },
-                signal: { type: "string", nullable: true },
+                code: { type: "number" },
+                message: { type: "string" },
+                data: {
+                  description: "子进程运行结果",
+                  type: "object",
+                  properties: {
+                    ok: { type: "boolean" },
+                    startedAt: { type: "number" },
+                    finishedAt: { type: "number" },
+                    durationMs: { type: "number" },
+                    node: { type: "string" },
+                    execPath: { type: "string" },
+                    stdout: { type: "string" },
+                    stderr: { type: "string" },
+                    code: { type: "number", nullable: true },
+                    signal: { type: "string", nullable: true },
+                  },
+                },
               },
             },
           },
@@ -112,7 +141,7 @@ export async function registerTestRoutes(app: FastifyInstance): Promise<void> {
             });
           });
 
-          return {
+          return success({
             ok: true,
             startedAt,
             finishedAt: Date.now(),
@@ -120,7 +149,7 @@ export async function registerTestRoutes(app: FastifyInstance): Promise<void> {
             node: process.version,
             execPath: process.execPath,
             ...output,
-          };
+          });
         },
       });
 
@@ -132,18 +161,25 @@ export async function registerTestRoutes(app: FastifyInstance): Promise<void> {
           description: "返回 swagger UI 地址，供前端展示（点击可打开）",
           response: {
             200: {
-              description: "swagger UI 地址",
               type: "object",
               properties: {
-                url: { type: "string" },
-                base: { type: "string" },
+                code: { type: "number" },
+                message: { type: "string" },
+                data: {
+                  description: "swagger UI 地址",
+                  type: "object",
+                  properties: {
+                    url: { type: "string" },
+                    base: { type: "string" },
+                  },
+                },
               },
             },
           },
         },
         handler: async () => {
           const base = `http://${getHost()}:${getApiPort()}`;
-          return { url: `${base}/ui`, base };
+          return success({ url: `${base}/ui`, base });
         },
       });
     },
