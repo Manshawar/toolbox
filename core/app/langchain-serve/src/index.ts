@@ -13,7 +13,8 @@ import { startWatchingStore } from "./services/storeService";
 import { inspect } from "node:util";
 import { getLogFilePath } from "./utils/logger";
 import path from "node:path";
-import { appendFileSync, existsSync, mkdirSync } from "node:fs";
+import { appendFileSync, createWriteStream, existsSync, mkdirSync } from "node:fs";
+import { PassThrough } from "node:stream";
 
 const LOG_LEVEL = (process.env.LOG_LEVEL || "info") as string;
 
@@ -60,9 +61,30 @@ function ensureLogFilePath(): string {
 function buildLoggerConfig() {
   const level = LOG_LEVEL;
 
-  // 开发模式：只走控制台 pretty，不写文件。
+  // 开发模式：控制台 pretty + 仍然落盘（通过 tee 分流）。
   if (usePinoPretty()) {
-    return { level, stream: pinoPretty(prettyOptions) };
+    const filePath = ensureLogFilePath();
+    if (filePath) {
+      const tee = new PassThrough();
+
+      // 1) 控制台 pretty
+      tee.pipe(pinoPretty(prettyOptions));
+
+      // 2) 原样 JSON Lines 落盘
+      const fileStream = createWriteStream(filePath, { flags: "a" });
+      fileStream.on("error", (err) => {
+        console.warn("[logger] log file write failed", { filePath, err });
+      });
+      tee.pipe(fileStream);
+
+      return {
+        level,
+        stream: tee,
+        timestamp: pino.stdTimeFunctions.isoTime,
+      };
+    }
+
+    return { level, stream: pinoPretty(prettyOptions), timestamp: pino.stdTimeFunctions.isoTime };
   }
 
   // 生产模式：尽量落盘到 langchain-serve.log，否则退回仅控制台输出。
