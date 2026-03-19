@@ -35,13 +35,21 @@ function getDirSizeBytes(dir: string): number {
 
 const RESOURCES_CORE = path.join(__dirname, "..", "src-tauri", "resources", "core");
 
-/** 必须随包分发的依赖：原生依赖 + 运行时需要文件资源的依赖（如 swagger-ui 静态资源） */
+/** 构建侧车时的运行模式（由 scripts/env 或交互方式提供） */
+const TOOLBOX_ENV = (process.env.TOOLBOX_ENV || "").toLowerCase();
+const IS_DEV_MODE = TOOLBOX_ENV === "development";
+
+/** 必须随包分发的依赖：原生依赖 +（开发模式才需要的）swagger 相关依赖 */
 const CORE_NATIVE_DEPS: Record<string, string> = {
   "better-sqlite3": "^12.6.2",
   "node-pty": "^1.0.0",
   "ws": "^8.18.0",
-  "@fastify/swagger": "^9.7.0",
-  "@fastify/swagger-ui": "^5.2.5",
+  ...(IS_DEV_MODE
+    ? {
+        "@fastify/swagger": "^9.7.0",
+        "@fastify/swagger-ui": "^5.2.5",
+      }
+    : {}),
 };
 
 /** 当前要生成的 package.json 内容（用于与已有文件对比） */
@@ -136,6 +144,18 @@ function pruneCoreNodeModules() {
   if (fs.existsSync(binDir)) {
     fs.rmSync(binDir, { recursive: true });
     console.log("[core] 已删除 node_modules/.bin（避免 Tauri 打包报错）");
+  }
+
+  // 非开发模式不需要 swagger 文档：删除以减少资源体积，并且配合动态 import 避免生产启动时加载依赖。
+  if (!IS_DEV_MODE) {
+    const swaggerDir = path.join(nm, "@fastify", "swagger");
+    const swaggerUiDir = path.join(nm, "@fastify", "swagger-ui");
+    for (const dir of [swaggerDir, swaggerUiDir]) {
+      if (fs.existsSync(dir)) {
+        fs.rmSync(dir, { recursive: true, force: true });
+        console.log("[core] 已删除 swagger 相关依赖: " + dir);
+      }
+    }
   }
 
   const keepPrebuild = getKeepPrebuild();

@@ -4,8 +4,6 @@
  */
 import Fastify from "fastify";
 import pinoPretty from "pino-pretty";
-import swagger from "@fastify/swagger";
-import swaggerUi from "@fastify/swagger-ui";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import { registerRoutes } from "./routes";
@@ -63,6 +61,10 @@ export async function createApp() {
 
   // 仅开发模式启用 Swagger UI，避免生产模式暴露文档页面。
   if (isToolboxDevMode()) {
+    // 动态引入：生产模式下不需要 swagger 包，避免启动时加载依赖。
+    const swagger = (await import("@fastify/swagger")).default;
+    const swaggerUi = (await import("@fastify/swagger-ui")).default;
+
     await app.register(swagger, {
       openapi: {
         info: {
@@ -123,7 +125,10 @@ export async function run(options?: { port?: number }): Promise<void> {
   try {
     await app.listen({ port, host });
     const base = `http://${host}:${port}`;
-    app.log.info({ API_PORT: port, base, swagger: `${base}/ui` }, "langchain-serve listening");
+    app.log.info(
+      { API_PORT: port, base, swagger: isToolboxDevMode() ? `${base}/ui` : undefined },
+      "langchain-serve listening",
+    );
   } catch (err) {
     app.log.error(err, "langchain-serve failed to start");
     process.exitCode = 1;
