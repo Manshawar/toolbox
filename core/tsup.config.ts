@@ -42,7 +42,6 @@ const IS_DEV_MODE = TOOLBOX_ENV === "development";
 /** 必须随包分发的依赖：原生依赖 +（开发模式才需要的）swagger 相关依赖 */
 const CORE_NATIVE_DEPS: Record<string, string> = {
   "better-sqlite3": "^12.6.2",
-  "node-pty": "^1.0.0",
   "ws": "^8.18.0",
   ...(IS_DEV_MODE
     ? {
@@ -116,26 +115,7 @@ function installCoreNodeModules() {
   }
 }
 
-/** 解析要保留的 node-pty prebuild 目录名：优先 --sidecar-target，其次 NODE_RUNTIME_TARGET，未指定则用本机 platform-arch */
-function getKeepPrebuild(): string {
-  const t = getSidecarTargetFromCli() || process.env.NODE_RUNTIME_TARGET;
-  if (t) {
-    const map: Record<string, string> = {
-      "aarch64-apple-darwin": "darwin-arm64",
-      "x86_64-apple-darwin": "darwin-x64",
-      "x86_64-pc-windows-msvc": "win32-x64",
-      "aarch64-pc-windows-msvc": "win32-arm64",
-      "x86_64-unknown-linux-gnu": "linux-x64",
-      "aarch64-unknown-linux-gnu": "linux-arm64",
-    };
-    if (map[t]) return map[t];
-  }
-  const platform = process.platform;
-  const arch = process.arch === "x64" ? "x64" : process.arch === "arm64" ? "arm64" : process.arch;
-  return `${platform}-${arch}`;
-}
-
-/** 裁剪 node_modules：.bin 必删；node-pty 只保留 getKeepPrebuild() 对应平台（指定则用指定，否则本机） */
+/** 裁剪 node_modules：.bin 必删（避免 Tauri 打包报错） */
 function pruneCoreNodeModules() {
   const nm = path.join(RESOURCES_CORE, "node_modules");
   if (!fs.existsSync(nm)) return;
@@ -146,6 +126,13 @@ function pruneCoreNodeModules() {
     console.log("[core] 已删除 node_modules/.bin（避免 Tauri 打包报错）");
   }
 
+  // 暂时禁用 node-pty：从资源侧彻底移除（避免体积/原生依赖带来的兼容风险）。
+  const ptyDir = path.join(nm, "node-pty");
+  if (fs.existsSync(ptyDir)) {
+    fs.rmSync(ptyDir, { recursive: true, force: true });
+    console.log("[core] 已删除 node-pty（暂时不启用）");
+  }
+
   // 非开发模式不需要 swagger 文档：删除以减少资源体积，并且配合动态 import 避免生产启动时加载依赖。
   if (!IS_DEV_MODE) {
     const swaggerDir = path.join(nm, "@fastify", "swagger");
@@ -154,19 +141,6 @@ function pruneCoreNodeModules() {
       if (fs.existsSync(dir)) {
         fs.rmSync(dir, { recursive: true, force: true });
         console.log("[core] 已删除 swagger 相关依赖: " + dir);
-      }
-    }
-  }
-
-  const keepPrebuild = getKeepPrebuild();
-  const ptyPrebuilds = path.join(nm, "node-pty", "prebuilds");
-  if (fs.existsSync(ptyPrebuilds)) {
-    const dirs = fs.readdirSync(ptyPrebuilds, { withFileTypes: true }).filter((d: fs.Dirent) => d.isDirectory());
-    for (const d of dirs) {
-      if (d.name !== keepPrebuild) {
-        const full = path.join(ptyPrebuilds, d.name);
-        fs.rmSync(full, { recursive: true });
-        console.log("[core] 已删除 node-pty/prebuilds/" + d.name + "（非本机/指定平台）");
       }
     }
   }
@@ -233,7 +207,7 @@ export default defineConfig({
     "pino-pretty",
   ],
   // 仅保留无法打包或需要运行时文件资源的模块在 node_modules，其余打进 bundle
-  external: ["better-sqlite3", "node-pty", "@fastify/swagger", "@fastify/swagger-ui"],
+  external: ["better-sqlite3", "@fastify/swagger", "@fastify/swagger-ui"],
   esbuildOptions(options) {
     // 从 core 目录解析 node_modules，保证 monorepo 下能找到依赖
     options.absWorkingDir = __dirname;
