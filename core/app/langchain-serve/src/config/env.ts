@@ -3,7 +3,7 @@
  * - 侧车模式：由 Tauri Rust 注入（优先）
  * - tsx 本地模式：由 core/.env（dotenv）提供兜底
  */
-import { getLogFilePath } from "../utils/logger";
+import { getDailyLogFilePath, getLogFilePath } from "../utils/logger";
 
 const HOST = "127.0.0.1";
 const DEFAULT_API_PORT = 8264;
@@ -58,7 +58,8 @@ export function getConfigInfo(): {
   return {
     dbPath: getDbPath(),
     storePath: getStorePath(),
-    logFile: getLogFilePath(),
+    // 打印与实际落盘文件一致（按天）
+    logFile: getDailyLogFilePath(),
     toolboxEnv: getToolboxEnv(),
     devMode: isToolboxDevMode(),
   };

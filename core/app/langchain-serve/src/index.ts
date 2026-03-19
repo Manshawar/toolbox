@@ -44,6 +44,7 @@ function ensureLogFilePath(): string {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
 
     // 触碰一次文件，便于尽早暴露权限/路径问题。
+    // 注：真正落盘会在 buildLoggerConfig 里改为“按天文件”，这里仅保底目录/基础文件存在。
     try {
       appendFileSync(filePath, "");
     } catch (err) {
@@ -52,6 +53,75 @@ function ensureLogFilePath(): string {
     }
   }
   return filePath;
+}
+
+let didCleanupOldLogs = false;
+
+function getLocalYMD(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function parseYMD(ymd: string): number | null {
+  // ymd: YYYY-MM-DD
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  if (!m) return null;
+  const [_, ys, ms, ds] = m;
+  const y = Number(ys);
+  const mo = Number(ms);
+  const d = Number(ds);
+  const dt = new Date(y, mo - 1, d, 0, 0, 0, 0);
+  const t = dt.getTime();
+  return Number.isFinite(t) ? t : null;
+}
+
+function cleanupOldDailyLogs(baseLogPath: string, keepDays: number): void {
+  if (didCleanupOldLogs) return;
+  didCleanupOldLogs = true;
+
+  const dir = path.dirname(baseLogPath);
+  const ext = path.extname(baseLogPath); // ".log"
+  const baseName = path.basename(baseLogPath, ext); // "langchain-serve"
+
+  const threshold = Date.now() - keepDays * 24 * 60 * 60 * 1000;
+
+  let entries: string[] = [];
+  try {
+    entries = (require("node:fs") as typeof import("node:fs")).readdirSync(dir);
+  } catch {
+    return;
+  }
+
+  for (const name of entries) {
+    if (!name.startsWith(`${baseName}-`) || !name.endsWith(ext)) continue;
+    const ymd = name.slice(baseName.length + 1, name.length - ext.length);
+    const t = parseYMD(ymd);
+    if (t === null) continue;
+    if (t < threshold) {
+      const p = path.join(dir, name);
+      try {
+        require("node:fs").rmSync(p, { force: true });
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
+function getDailyLogFilePath(keepDays = 7): string {
+  const base = getLogFilePath();
+  if (!base) return "";
+
+  cleanupOldDailyLogs(base, keepDays);
+
+  const dir = path.dirname(base);
+  const ext = path.extname(base); // ".log"
+  const baseName = path.basename(base, ext); // "langchain-serve"
+  const ymd = getLocalYMD(new Date());
+
+  return path.join(dir, `${baseName}-${ymd}${ext}`);
 }
 
 /**
@@ -63,17 +133,27 @@ function buildLoggerConfig() {
 
   // 开发模式：控制台 pretty + 仍然落盘（通过 tee 分流）。
   if (usePinoPretty()) {
-    const filePath = ensureLogFilePath();
-    if (filePath) {
+    const dailyFilePath = getDailyLogFilePath(7);
+    if (dailyFilePath) {
+      const dir = path.dirname(dailyFilePath);
+      if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+
+      // 触碰一次当天文件，便于尽早暴露权限/路径问题。
+      try {
+        appendFileSync(dailyFilePath, "");
+      } catch (err) {
+        console.warn("[logger] touch daily log file failed", { dailyFilePath, err });
+      }
+
       const tee = new PassThrough();
 
       // 1) 控制台 pretty
       tee.pipe(pinoPretty(prettyOptions));
 
       // 2) 原样 JSON Lines 落盘
-      const fileStream = createWriteStream(filePath, { flags: "a" });
+      const fileStream = createWriteStream(dailyFilePath, { flags: "a" });
       fileStream.on("error", (err) => {
-        console.warn("[logger] log file write failed", { filePath, err });
+        console.warn("[logger] log file write failed", { dailyFilePath, err });
       });
       tee.pipe(fileStream);
 
@@ -88,10 +168,11 @@ function buildLoggerConfig() {
   }
 
   // 生产模式：尽量落盘到 langchain-serve.log，否则退回仅控制台输出。
-  const filePath = ensureLogFilePath();
-  if (filePath)
+  const dailyFilePath = getDailyLogFilePath(7);
+  if (dailyFilePath) {
     // 用 ISO 时间字符串替代默认 epoch 时间；避免你们再做换算。
-    return { level, file: filePath, timestamp: pino.stdTimeFunctions.isoTime };
+    return { level, file: dailyFilePath, timestamp: pino.stdTimeFunctions.isoTime };
+  }
 
   return { level };
 }
