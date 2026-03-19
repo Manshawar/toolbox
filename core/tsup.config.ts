@@ -22,7 +22,9 @@ function getDirSizeBytes(dir: string): number {
       if (e.isDirectory()) total += getDirSizeBytes(full);
       else total += fs.statSync(full).size;
     }
-  } catch {}
+  } catch {
+    console.error(`[core] 计算目录大小失败: ${dir}`);
+  }
   return total;
 }
 
@@ -156,7 +158,9 @@ function pruneCoreNodeModules() {
       else if (/\.(md|markdown)$/i.test(e.name) || /^(README|CHANGELOG|LICENSE|HISTORY)(\.(md|txt))?$/i.test(e.name))
         try {
           fs.unlinkSync(full);
-        } catch {}
+        } catch {
+          console.error(`[core] 删除文件失败: ${full}`);
+        }
     }
   }
   rmDocFiles(nm, 0);
@@ -179,19 +183,21 @@ export default defineConfig({
   target: "node24",
   treeshake: true,
   noExternal: [
-    'hono',
+    'fastify',
+    '@fastify/swagger',
+    '@fastify/swagger-ui',
+    '@fastify/cors',
+    '@fastify/multipart',
     'fs-extra',
-    '@langchain/core', // 甚至是复杂的 langchain
+    '@langchain/core',
     'zod',
     'dotenv',
-    "@hono/node-server",
-    "@hono/swagger-ui",
     "pino",
-    "pino-pretty"
+    "pino-pretty",
   ],
   // 仅保留无法打包的原生模块在 node_modules，其余打进 bundle
   external: ["better-sqlite3", "node-pty"],
-  esbuildOptions(options, context) {
+  esbuildOptions(options) {
     // 从 core 目录解析 node_modules，保证 monorepo 下能找到依赖
     options.absWorkingDir = __dirname;
     options.banner = {

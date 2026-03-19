@@ -1,10 +1,11 @@
-import type { Hono } from "hono";
-import { registerDocRoutes } from "./doc";
+import type { FastifyInstance } from "fastify";
 import { registerHealthRoutes } from "./health";
 import { registerTestRoutes } from "./test";
 
-export function registerRoutes(app: Hono): void {
-  registerHealthRoutes(app);
-  registerTestRoutes(app);
-  registerDocRoutes(app);
+/**
+ * 注册所有路由
+ */
+export async function registerRoutes(app: FastifyInstance): Promise<void> {
+  await registerHealthRoutes(app);
+  await registerTestRoutes(app);
 }

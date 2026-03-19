@@ -3,19 +3,14 @@
  */
 import Database from "better-sqlite3";
 import { getDbPath } from "../config/env";
-import { logger } from "../utils/logger";
 
 let dbInstance: Database.Database | null = null;
 
 export function getDb(): Database.Database | null {
   const dbPath = getDbPath();
-  if (!dbPath) {
-    logger.debug("db: DB_PATH not set, database disabled");
-    return null;
-  }
+  if (!dbPath) return null;
   if (!dbInstance) {
     dbInstance = new Database(dbPath);
-    logger.info({ dbPath }, "db: opened");
   }
   return dbInstance;
 }

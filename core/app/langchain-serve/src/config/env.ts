@@ -1,7 +1,7 @@
 /**
  * 环境变量：Tauri 侧车注入或 script/dev.ts 的 dotenv 加载
  */
-import { getLogFilePath, logger } from "../utils/logger";
+import { getLogFilePath } from "../utils/logger";
 
 const HOST = "127.0.0.1";
 const DEFAULT_API_PORT = 8264;
@@ -24,12 +24,24 @@ export function getStorePath(): string | undefined {
   return process.env.STORE_PATH?.trim() || undefined;
 }
 
+/** 获取配置信息（供日志打印） */
+export function getConfigInfo(): {
+  dbPath?: string;
+  storePath?: string;
+  logFile?: string;
+} {
+  return {
+    dbPath: getDbPath(),
+    storePath: getStorePath(),
+    logFile: getLogFilePath(),
+  };
+}
+
+/** 打印配置（使用 console，在服务启动前调用） */
 export function logConfig(): void {
-  const dbPath = getDbPath();
-  const storePath = getStorePath();
-  const logFile = getLogFilePath();
-  if (dbPath) logger.info({ DB_PATH: dbPath }, "config: DB_PATH");
-  if (storePath) logger.info({ STORE_PATH: storePath }, "config: STORE_PATH");
-  if (logFile) logger.info({ LOG_FILE: logFile }, "config: log file");
-  if (!dbPath && !storePath) logger.debug("config: no DB_PATH or STORE_PATH set");
+  const { dbPath, storePath, logFile } = getConfigInfo();
+  if (dbPath) console.log(`[config] DB_PATH: ${dbPath}`);
+  if (storePath) console.log(`[config] STORE_PATH: ${storePath}`);
+  if (logFile) console.log(`[config] LOG_FILE: ${logFile}`);
+  if (!dbPath && !storePath) console.log("[config] no DB_PATH or STORE_PATH set");
 }

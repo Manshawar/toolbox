@@ -1,6 +1,5 @@
 import path from "node:path";
 import { watch } from "node:fs";
-import { logger } from "./logger";
 
 const DEBOUNCE_MS = 150;
 
@@ -8,6 +7,7 @@ export type ReadFile = (filePath: string) => Promise<unknown>;
 
 /**
  * 单文件监听缓存：内部完成 load / 防抖重载 / watch，对外只暴露 get 与 startWatching。
+ * 内部日志使用 console，避免依赖独立 logger（应用层使用 Fastify 内置 logger）。
  */
 export function createWatchedFileCache(
   filePath: string,
@@ -22,10 +22,12 @@ export function createWatchedFileCache(
   async function load(): Promise<void> {
     try {
       cached = await readFile(filePath);
-      logger.debug({ filePath, hasData: cached != null }, "watchedFileCache: loaded");
+      if (process.env.NODE_ENV === "development") {
+        console.debug("[watchedFileCache] loaded", { filePath, hasData: cached != null });
+      }
     } catch (err) {
       cached = null;
-      logger.warn({ err, filePath }, "watchedFileCache: load failed");
+      console.warn("[watchedFileCache] load failed", { err, filePath });
     }
   }
 
@@ -44,11 +46,15 @@ export function createWatchedFileCache(
       void load();
       watcher = watch(dir, { recursive: false }, (evt, filename) => {
         if (filename === basename) {
-          logger.debug({ filePath, evt }, "watchedFileCache: file change, reload scheduled");
+          if (process.env.NODE_ENV === "development") {
+            console.debug("[watchedFileCache] file change, reload scheduled", { filePath, evt });
+          }
           reloadDebounced();
         }
       });
-      logger.debug({ filePath: dir, basename }, "watchedFileCache: watch started");
+      if (process.env.NODE_ENV === "development") {
+        console.debug("[watchedFileCache] watch started", { dir, basename });
+      }
     },
   };
 }

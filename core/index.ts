@@ -1,7 +1,6 @@
+/**
+ * core 入口：启动 langchain-serve 服务
+ */
 import { run } from "./app/langchain-serve/src/index";
-import { logger } from "./app/langchain-serve/src/utils/logger";
 
-run().catch((err) => {
-  logger.error(err, "langchain-serve failed to start");
-  process.exitCode = 1;
-});
+run();

@@ -1,82 +1,152 @@
-import { Hono } from "hono";
+import type { FastifyInstance } from "fastify";
 import { execFile } from "child_process";
 import { getStoreConfig } from "../services/storeService";
 import { listTest } from "../services/testService";
 import { getApiPort, getHost } from "../config/env";
 
-const testApp = new Hono();
-
-/** 查询 db：返回 test 表数据（需设置 DB_PATH） */
-testApp.get("/db", (c) => {
-  const data = listTest();
-  return c.json(data);
-});
-
-/** 查询 store：返回当前 store 配置（需设置 STORE_PATH，并已 startWatchingStore） */
-testApp.get("/store", (c) => {
-  const data = getStoreConfig();
-  return c.json(data ?? null);
-});
-
-/** 测试 Node 子进程能力：执行 `node -e "console.log(...)"` 并返回输出 */
-testApp.get("/child-process", async (c) => {
-  const startedAt = Date.now();
-  const output = await new Promise<{ stdout: string; stderr: string; code: number | null; signal: NodeJS.Signals | null }>((resolve) => {
-    const child = execFile(
-      process.execPath,
-      ["-e", "console.log('[core route] child process ok')"],
-      (error, stdout, stderr) => {
-        if (error && (error as any).code !== 0) {
-          resolve({
-            stdout: stdout.toString(),
-            stderr: (stderr || error.message).toString(),
-            code: (error as any).code ?? null,
-            signal: (error as any).signal ?? null,
-          });
-        } else {
-          resolve({
-            stdout: stdout.toString(),
-            stderr: stderr.toString(),
-            code: 0,
-            signal: null,
-          });
-        }
-      }
-    );
-    child.on("error", (err) => {
-      resolve({
-        stdout: "",
-        stderr: err.message,
-        code: null,
-        signal: null,
+/**
+ * Test 路由：测试数据库、配置、子进程等功能
+ * 使用 Express 风格的 shorthand declaration
+ */
+export async function registerTestRoutes(app: FastifyInstance): Promise<void> {
+  // 使用 prefix 创建子路由实例，类似 Express Router
+  await app.register(
+    async (router) => {
+      // GET /test/db - 查询 DB
+      router.get("/db", {
+        schema: {
+          tags: ["Test"],
+          summary: "查询 DB",
+          description: "返回 test 表数据，需设置 DB_PATH",
+          response: {
+            200: {
+              description: "test 表数据列表",
+              type: "array",
+              items: { type: "object" },
+            },
+          },
+        },
+        handler: async () => listTest(),
       });
-    });
-  });
 
-  return c.json({
-    ok: true,
-    startedAt,
-    finishedAt: Date.now(),
-    durationMs: Date.now() - startedAt,
-    node: process.version,
-    execPath: process.execPath,
-    ...output,
-  });
-});
+      // GET /test/store - 查询 Store
+      router.get("/store", {
+        schema: {
+          tags: ["Test"],
+          summary: "查询 Store",
+          description: "返回当前 store 配置，需设置 STORE_PATH",
+          response: {
+            200: {
+              description: "store 配置或 null",
+              type: "object",
+              nullable: true,
+            },
+          },
+        },
+        handler: async () => getStoreConfig() ?? null,
+      });
 
-/** 返回 swagger UI 地址，供前端展示（点击可打开） */
-testApp.get("/swagger-url", (c) => {
-  try {
-    const host = getHost();
-    const port = getApiPort();
-    const base = `http://${host}:${port}`;
-    const url = `${base}/ui`;
-    return c.json({ url, base });
-  } catch (e) {
-    return c.json({ error: String(e), hint: "API_PORT 或 env 异常" }, 500);
-  }
-});
+      // GET /test/child-process - 测试子进程
+      router.get("/child-process", {
+        schema: {
+          tags: ["Test"],
+          summary: "测试子进程",
+          description: "测试子进程是否能正常运行",
+          response: {
+            200: {
+              description: "子进程运行结果",
+              type: "object",
+              properties: {
+                ok: { type: "boolean" },
+                startedAt: { type: "number" },
+                finishedAt: { type: "number" },
+                durationMs: { type: "number" },
+                node: { type: "string" },
+                execPath: { type: "string" },
+                stdout: { type: "string" },
+                stderr: { type: "string" },
+                code: { type: "number", nullable: true },
+                signal: { type: "string", nullable: true },
+              },
+            },
+          },
+        },
+        handler: async () => {
+          const startedAt = Date.now();
+          const output = await new Promise<{
+            stdout: string;
+            stderr: string;
+            code: number | null;
+            signal: NodeJS.Signals | null;
+          }>((resolve) => {
+            const child = execFile(
+              process.execPath,
+              ["-e", "console.log('[core route] child process ok')"],
+              (error, stdout, stderr) => {
+                if (error && error.code) {
+                  resolve({
+                    stdout: stdout.toString(),
+                    stderr: (stderr || error.message).toString(),
+                    code: typeof error.code === "number" ? error.code : null,
+                    signal:
+                      (error as NodeJS.ErrnoException & { signal?: NodeJS.Signals }).signal ??
+                      null,
+                  });
+                } else {
+                  resolve({
+                    stdout: stdout.toString(),
+                    stderr: stderr.toString(),
+                    code: 0,
+                    signal: null,
+                  });
+                }
+              }
+            );
+            child.on("error", (err) => {
+              resolve({
+                stdout: "",
+                stderr: err.message,
+                code: null,
+                signal: null,
+              });
+            });
+          });
 
-export function registerTestRoutes(app: Hono): void {
-  app.route("/test", testApp);
+          return {
+            ok: true,
+            startedAt,
+            finishedAt: Date.now(),
+            durationMs: Date.now() - startedAt,
+            node: process.version,
+            execPath: process.execPath,
+            ...output,
+          };
+        },
+      });
+
+      // GET /test/swagger-url - 返回 swagger UI 地址
+      router.get("/swagger-url", {
+        schema: {
+          tags: ["Test"],
+          summary: "返回 swagger UI 地址",
+          description: "返回 swagger UI 地址，供前端展示（点击可打开）",
+          response: {
+            200: {
+              description: "swagger UI 地址",
+              type: "object",
+              properties: {
+                url: { type: "string" },
+                base: { type: "string" },
+              },
+            },
+          },
+        },
+        handler: async () => {
+          const base = `http://${getHost()}:${getApiPort()}`;
+          return { url: `${base}/ui`, base };
+        },
+      });
+    },
+    { prefix: "/test" }
+  );
 }
