@@ -7,7 +7,7 @@
     "dev:web": "vite",
     "dev:core": "pnpm -C core exec tsx watch ./index.ts",
     "dev": "cross-env TAURI_SKIP_SIDECAR=1 concurrently -k \"pnpm run dev:core\" \"pnpm tauri dev\"",
-    "dev:app": "pnpm run build:core && pnpm tauri dev",
+    "dev:app": "cross-env TOOLBOX_ENV=development pnpm run build:core && cross-env TOOLBOX_ENV=development pnpm tauri dev",
     "build": "vue-tsc --noEmit && vite build",
     "build:core": "pnpm -C core run build",
     "build:core:mac": "pnpm -C core run build:mac",

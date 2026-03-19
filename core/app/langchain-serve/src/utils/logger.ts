@@ -2,7 +2,7 @@
  * 日志工具：获取日志文件路径
  * Fastify 使用自己的 pino 实例，这里只提供路径工具
  *
- * 控制台是否美化：见 index.ts 的 usePinoPretty（LOG_PRETTY、NODE_ENV）
+ * 控制台是否美化：见 index.ts 的 usePinoPretty（TOOLBOX_ENV）
  */
 
 /** 当前日志文件路径（未写文件时为空） */
