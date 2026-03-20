@@ -1,6 +1,7 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
+import websocket from "@fastify/websocket";
 import { registerRoutes } from "./routes";
 import { isToolboxDevMode } from "./config/env";
 import { inspect } from "node:util";
@@ -108,6 +109,9 @@ export async function createApp() {
       fileSize: 50 * 1024 * 1024, // 50MB
     },
   });
+
+  // 注册 WebSocket 支持
+  await app.register(websocket);
 
   // 注册业务路由
   await registerRoutes(app);

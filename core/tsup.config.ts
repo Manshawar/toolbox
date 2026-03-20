@@ -37,7 +37,6 @@ const IS_DEV_MODE = TOOLBOX_ENV === "development";
 /** 必须随包分发的依赖：原生依赖 +（开发模式才需要的）swagger 相关依赖 */
 const CORE_NATIVE_DEPS: Record<string, string> = {
   "better-sqlite3": "^12.6.2",
-  "ws": "^8.18.0",
   ...(IS_DEV_MODE
     ? {
         "@fastify/swagger": "^9.7.0",
@@ -197,7 +196,6 @@ export default defineConfig({
     'fs-extra',
     '@langchain/core',
     'zod',
-    'dotenv',
     "pino",
     "pino-pretty",
   ],
