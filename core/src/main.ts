@@ -13,7 +13,7 @@ import { startWatchingStore } from "./services/storeService";
 import { inspect } from "node:util";
 import { getLogFilePath } from "./utils/logger";
 import path from "node:path";
-import { appendFileSync, createWriteStream, existsSync, mkdirSync } from "node:fs";
+import { appendFileSync, createWriteStream, existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { PassThrough } from "node:stream";
 
 const LOG_LEVEL = (process.env.LOG_LEVEL || "info") as string;
@@ -34,27 +34,6 @@ const prettyOptions = {
   ignore: "pid,hostname",
 };
 
-/**
- * 获取日志文件路径，确保目录存在
- */
-function ensureLogFilePath(): string {
-  const filePath = getLogFilePath();
-  if (filePath) {
-    const dir = path.dirname(filePath);
-    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-
-    // 触碰一次文件，便于尽早暴露权限/路径问题。
-    // 注：真正落盘会在 buildLoggerConfig 里改为“按天文件”，这里仅保底目录/基础文件存在。
-    try {
-      appendFileSync(filePath, "");
-    } catch (err) {
-      console.warn("[logger] touch log file failed", { filePath, err });
-      return "";
-    }
-  }
-  return filePath;
-}
-
 let didCleanupOldLogs = false;
 
 function getLocalYMD(d: Date): string {
@@ -68,7 +47,7 @@ function parseYMD(ymd: string): number | null {
   // ymd: YYYY-MM-DD
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
   if (!m) return null;
-  const [_, ys, ms, ds] = m;
+  const [, ys, ms, ds] = m;
   const y = Number(ys);
   const mo = Number(ms);
   const d = Number(ds);
@@ -89,7 +68,7 @@ function cleanupOldDailyLogs(baseLogPath: string, keepDays: number): void {
 
   let entries: string[] = [];
   try {
-    entries = (require("node:fs") as typeof import("node:fs")).readdirSync(dir);
+    entries = readdirSync(dir);
   } catch {
     return;
   }
@@ -102,7 +81,7 @@ function cleanupOldDailyLogs(baseLogPath: string, keepDays: number): void {
     if (t < threshold) {
       const p = path.join(dir, name);
       try {
-        require("node:fs").rmSync(p, { force: true });
+        rmSync(p, { force: true });
       } catch {
         // ignore
       }

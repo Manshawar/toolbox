@@ -12,11 +12,6 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-function getSidecarTargetFromCli(): string | undefined {
-  const arg = process.argv.slice(2).find((a) => a.startsWith("--sidecar-target="));
-  return arg ? arg.split("=")[1] : undefined;
-}
-
 /** 递归计算目录大小（字节），跨平台替代 du */
 function getDirSizeBytes(dir: string): number {
   let total = 0;
@@ -208,7 +203,7 @@ export default defineConfig({
   ],
   // 仅保留无法打包或需要运行时文件资源的模块在 node_modules，其余打进 bundle
   external: ["better-sqlite3", "@fastify/swagger", "@fastify/swagger-ui"],
-  esbuildOptions(options) {
+  esbuildOptions(options: { absWorkingDir?: string; banner?: Record<string, string> }) {
     // 从 core 目录解析 node_modules，保证 monorepo 下能找到依赖
     options.absWorkingDir = __dirname;
     options.banner = {
