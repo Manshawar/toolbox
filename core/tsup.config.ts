@@ -37,6 +37,9 @@ const IS_DEV_MODE = TOOLBOX_ENV === "development";
 /** 必须随包分发的依赖：原生依赖 +（开发模式才需要的）swagger 相关依赖 */
 const CORE_NATIVE_DEPS: Record<string, string> = {
   "better-sqlite3": "^12.6.2",
+  // 运行时必须存在但不打进 index.js：用于换取更小的生成产物
+  "fastify": "^5.8.2",
+  "@fastify/websocket": "^11.0.0",
   ...(IS_DEV_MODE
     ? {
         "@fastify/swagger": "^9.7.0",
@@ -87,7 +90,23 @@ function installCoreNodeModules() {
   // 在 src-tauri/resources/core 下做两重验证：① 依赖是否发生变化  ② node_modules 是否存在
   const depsUnchanged = fs.existsSync(pkgPath) && dependenciesUnchanged(pkgPath);
   const nodeModulesExists = fs.existsSync(nodeModulesDir);
-  if (depsUnchanged && nodeModulesExists) {
+
+  function depDirForName(depName: string): string {
+    // scoped: @scope/pkg -> node_modules/@scope/pkg
+    if (depName.startsWith("@")) {
+      const [scope, pkg] = depName.split("/");
+      return path.join(nodeModulesDir, scope, pkg);
+    }
+    // unscoped: pkg -> node_modules/pkg
+    return path.join(nodeModulesDir, depName);
+  }
+
+  const requiredDeps = Object.keys((minimalPkg.dependencies ?? {}) as Record<string, string>);
+  const requiredDepsInstalled =
+    requiredDeps.length > 0 && requiredDeps.every((d) => fs.existsSync(depDirForName(d)));
+
+  // 防止出现“跳过 install，但 node_modules 其实残缺”的情况（例如上次网络失败导致缺依赖）。
+  if (depsUnchanged && nodeModulesExists && requiredDepsInstalled) {
     console.log("[core] 提示：resources/core 依赖未变化且 node_modules 已存在，跳过 npm install");
     pruneCoreNodeModules();
     return;
@@ -97,10 +116,15 @@ function installCoreNodeModules() {
   console.log("[core] 已写入 resources/core/package.json（仅原生依赖）");
   try {
     // 不加 --ignore-scripts，让 better-sqlite3 的 postinstall 执行，生成 build/*.node 原生二进制
-    execSync("npm install --omit=dev --legacy-peer-deps", {
+    execSync("npm install --omit=dev --legacy-peer-deps --registry=https://registry.npmjs.org", {
       cwd: RESOURCES_CORE,
       stdio: "inherit",
-      env: { ...process.env, NODE_ENV: "production" },
+      env: {
+        ...process.env,
+        NODE_ENV: "production",
+        // 防止环境默认使用被策略拦截的镜像源（如 npmmirror），导致构建失败
+        NPM_CONFIG_REGISTRY: "https://registry.npmjs.org",
+      },
     });
     console.log("[core] 已安装 resources/core/node_modules（含 better-sqlite3 .node）");
     pruneCoreNodeModules();
@@ -222,7 +246,6 @@ export default defineConfig({
   // 产物体积更小，也能减少生成 JS 的行数，降低编辑器解析压力
   minify: true,
   noExternal: [
-    'fastify',
     '@fastify/cors',
     '@fastify/multipart',
     'fs-extra',
@@ -230,10 +253,9 @@ export default defineConfig({
     'zod',
     "pino",
     "pino-pretty",
-    "@fastify/websocket",
   ],
   // 仅保留无法打包或需要运行时文件资源的模块在 node_modules，其余打进 bundle
-  external: ["better-sqlite3", "@fastify/swagger", "@fastify/swagger-ui"],
+  external: ["better-sqlite3", "fastify", "@fastify/websocket", "@fastify/swagger", "@fastify/swagger-ui"],
   esbuildOptions(options: { absWorkingDir?: string; banner?: Record<string, string> }) {
     // 从 core 目录解析 node_modules，保证 monorepo 下能找到依赖
     options.absWorkingDir = __dirname;
