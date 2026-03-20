@@ -139,26 +139,55 @@ function pruneCoreNodeModules() {
     }
   }
 
-  function rmDocFiles(dir: string, depth: number) {
-    if (depth > 6) return;
+  function rmUnnecessaryFiles(dir: string, depth: number) {
+    if (depth > 8) return;
     let entries: fs.Dirent[];
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
     } catch {
       return;
     }
+    const rmDirNames = new Set([
+      "test",
+      "tests",
+      "__tests__",
+      "examples",
+      "docs",
+      "doc",
+      "bench",
+      "benchmark",
+      "coverage",
+    ]);
     for (const e of entries) {
       const full = path.join(dir, e.name);
-      if (e.isDirectory()) rmDocFiles(full, depth + 1);
-      else if (/\.(md|markdown)$/i.test(e.name) || /^(README|CHANGELOG|LICENSE|HISTORY)(\.(md|txt))?$/i.test(e.name))
+      if (e.isDirectory()) {
+        if (rmDirNames.has(e.name)) {
+          try {
+            fs.rmSync(full, { recursive: true, force: true });
+          } catch {
+            console.error(`[core] 删除目录失败: ${full}`);
+          }
+        } else {
+          rmUnnecessaryFiles(full, depth + 1);
+        }
+        continue;
+      }
+
+      // 文档/源码/调试映射（不会影响运行时行为）
+      const isMd = /\.(md|markdown)$/i.test(e.name);
+      const isReadmeLike = /^(README|CHANGELOG|LICENSE|HISTORY)(\.(md|txt))?$/i.test(e.name);
+      const isMap = e.name.endsWith(".map");
+      const isDts = e.name.endsWith(".d.ts");
+      if (isMd || isReadmeLike || isMap || isDts) {
         try {
           fs.unlinkSync(full);
         } catch {
           console.error(`[core] 删除文件失败: ${full}`);
         }
+      }
     }
   }
-  rmDocFiles(nm, 0);
+  rmUnnecessaryFiles(nm, 0);
 
   // @fastify/send 的测试夹具包含 snowman(☃) 路径名，
   // 在 WiX zh-CN(codepage 936) 下会导致 LGHT0311，运行时并不需要 test 目录。
@@ -182,13 +211,16 @@ export default defineConfig({
   outDir: "../src-tauri/resources/core",
   format: ["cjs"],
   splitting: false,
-  sourcemap: true,
+  // 生成环境建议保留 sourcemap，开发模式关闭可显著降低产物分析/加载成本
+  sourcemap: IS_DEV_MODE ? false : true,
   // 设为 false：clean 会清空整个 outDir，会删掉 package.json 与 node_modules，导致无法跳过安装
   clean: false,
   bundle: true,
   platform: "node",
   target: "node24",
   treeshake: true,
+  // 产物体积更小，也能减少生成 JS 的行数，降低编辑器解析压力
+  minify: true,
   noExternal: [
     'fastify',
     '@fastify/cors',
@@ -211,6 +243,13 @@ export default defineConfig({
   },
   onSuccess: async () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
+    // sourcemap 在开发模式关闭后，清理旧 map，避免编辑器继续分析旧文件
+    if (IS_DEV_MODE) {
+      const mapPath = path.join(RESOURCES_CORE, "index.js.map");
+      if (fs.existsSync(mapPath)) {
+        fs.rmSync(mapPath, { force: true });
+      }
+    }
     installCoreNodeModules();
   },
 });

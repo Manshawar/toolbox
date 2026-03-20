@@ -13,7 +13,10 @@ export default tseslint.config(
       "**/.tauri/**",
       "**/coverage/**",
       "**/*.min.js",
+      // 生成物/打包产物：避免 ESLint 在打开时解析超大文件（会卡死）
       "core/resources/**",
+      "src-tauri/resources/**",
+      "src-tauri/resources/core/**",
     ],
   },
 
