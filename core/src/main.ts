@@ -24,6 +24,8 @@ export async function run(options?: { port?: number }): Promise<void> {
       { API_PORT: port, base, swagger: isToolboxDevMode() ? `${base}/ui` : undefined },
       "langchain-serve listening",
     );
+    // 输出就绪标记，供 Rust 检测并通知前端
+    console.log("###CORE_READY###", JSON.stringify({ port, base, ws: `${base}/ws` }));
   } catch (err) {
     app.log.error(err, "langchain-serve failed to start");
     process.exitCode = 1;

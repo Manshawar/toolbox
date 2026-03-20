@@ -9,6 +9,32 @@
 import { fetch } from "@tauri-apps/plugin-http";
 import { store } from "@/store";
 import { useTauriConfigStore } from "@/store/modules/tauriConfig";
+import { ElMessage } from "element-plus";
+
+/** Core 服务就绪状态 */
+let isCoreReady = false;
+const coreReadyListeners: Array<(ready: boolean) => void> = [];
+
+/** 标记 Core 服务已就绪 */
+export function setCoreReady(ready: boolean): void {
+  isCoreReady = ready;
+  console.log(`[tauriHttp] Core 服务状态: ${ready ? "就绪" : "未就绪"}`);
+  coreReadyListeners.forEach((cb) => cb(ready));
+}
+
+/** 获取 Core 服务就绪状态 */
+export function getCoreReady(): boolean {
+  return isCoreReady;
+}
+
+/** 监听 Core 服务状态变化 */
+export function onCoreReadyChange(callback: (ready: boolean) => void): () => void {
+  coreReadyListeners.push(callback);
+  return () => {
+    const index = coreReadyListeners.indexOf(callback);
+    if (index > -1) coreReadyListeners.splice(index, 1);
+  };
+}
 
 function getApiPort(): number {
   return useTauriConfigStore(store).api_port;
@@ -42,11 +68,42 @@ export async function fetchApi(
   path: string,
   init?: RequestInit
 ): Promise<Response> {
+  // 检查服务是否已就绪
+  if (!isCoreReady) {
+    const msg = "Core 服务尚未就绪，请稍后再试";
+    console.warn(`[fetchApi] ${msg}: ${path}`);
+    ElMessage.warning(msg);
+    // 返回一个模拟的 503 响应，避免调用方崩溃
+    return new Response(
+      JSON.stringify({ error: msg, code: "SERVICE_NOT_READY" }),
+      {
+        status: 503,
+        statusText: "Service Unavailable",
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
+
   const base = getApiBaseUrl();
   const url = path.startsWith("http") ? path : `${base.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
   const mergedInit = {
     ...init,
     ...LOCAL_NO_PROXY_OPTIONS,
   };
-  return fetch(url, mergedInit);
+
+  try {
+    const response = await fetch(url, mergedInit);
+    // 处理 502 错误（服务未启动或端口不对）
+    if (response.status === 502) {
+      const msg = "Core 服务连接失败（502），服务可能未启动";
+      console.error(`[fetchApi] ${msg}: ${url}`);
+      ElMessage.error(msg);
+    }
+    return response;
+  } catch (error) {
+    const msg = `请求失败: ${error instanceof Error ? error.message : String(error)}`;
+    console.error(`[fetchApi] ${msg}: ${url}`);
+    ElMessage.error("Core 服务请求失败，请检查服务状态");
+    throw error;
+  }
 }

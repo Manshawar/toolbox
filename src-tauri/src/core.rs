@@ -11,7 +11,7 @@
 use std::fs;
 use std::io::Write;
 use std::sync::{Mutex, OnceLock};
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_shell::process::{CommandChild, CommandEvent};
 use tauri_plugin_shell::ShellExt;
 
@@ -242,12 +242,23 @@ pub fn start_core_on_setup(app: &AppHandle) -> Result<(), String> {
             SIDECAR_PID.get_or_init(|| Mutex::new(None)).lock().unwrap().replace(pid);
             println!("[core] 接口 | http://127.0.0.1:{}", api_port);
             // 在后台消费侧车 stdout/stderr，否则缓冲区满会导致子进程阻塞
+            let app_handle = app.clone();
             tauri::async_runtime::spawn(async move {
                 while let Some(event) = rx.recv().await {
                     match event {
                         CommandEvent::Stdout(line) => {
                             let _ = std::io::stdout().write_all(&line);
                             let _ = std::io::stdout().flush();
+                            // 检测 Core 服务就绪标记
+                            if let Ok(text) = String::from_utf8(line.clone()) {
+                                if text.contains("###CORE_READY###") {
+                                    let _ = app_handle.emit("core-ready", serde_json::json!({
+                                        "ready": true,
+                                        "apiPort": api_port,
+                                    }));
+                                    println!("[core] 已 emit core-ready 事件到前端");
+                                }
+                            }
                         }
                         CommandEvent::Stderr(line) => {
                             let _ = std::io::stderr().write_all(&line);
