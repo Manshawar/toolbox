@@ -222,6 +222,8 @@ pub fn start_core_on_setup(app: &AppHandle) -> Result<(), String> {
     };
 
     let env_pairs: Vec<_> = env_vars.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
+    let spawn_start = std::time::Instant::now();
+    eprintln!("[core] 准备 spawn Node 侧车...");
     match sidecar
         .arg(&index_js)
         .current_dir(&core_dir)
@@ -229,8 +231,9 @@ pub fn start_core_on_setup(app: &AppHandle) -> Result<(), String> {
         .spawn()
     {
         Ok((mut rx, child)) => {
+            let spawn_elapsed = spawn_start.elapsed().as_millis();
             let pid = child.pid();
-            eprintln!("[core] toolbox_node 侧车已启动 core | 端口 {}", api_port);
+            eprintln!("[core] toolbox_node 侧车已启动 core | 端口 {} | spawn耗时: {}ms | PID: {}", api_port, spawn_elapsed, pid);
             if let Some(state) = app.try_state::<CorePorts>() {
                 *state.api_port.lock().unwrap() = Some(api_port);
             }
@@ -243,10 +246,16 @@ pub fn start_core_on_setup(app: &AppHandle) -> Result<(), String> {
             println!("[core] 接口 | http://127.0.0.1:{}", api_port);
             // 在后台消费侧车 stdout/stderr，否则缓冲区满会导致子进程阻塞
             let app_handle = app.clone();
+            let spawn_start_spawn = spawn_start.clone();
+            let mut first_output = true;
             tauri::async_runtime::spawn(async move {
                 while let Some(event) = rx.recv().await {
                     match event {
                         CommandEvent::Stdout(line) => {
+                            if first_output {
+                                first_output = false;
+                                println!("[core] 收到 Node 进程第一条 stdout，距 spawn 约: {:?}", spawn_start_spawn.elapsed());
+                            }
                             let _ = std::io::stdout().write_all(&line);
                             let _ = std::io::stdout().flush();
                             // 检测 Core 服务就绪标记
@@ -256,7 +265,7 @@ pub fn start_core_on_setup(app: &AppHandle) -> Result<(), String> {
                                         "ready": true,
                                         "apiPort": api_port,
                                     }));
-                                    println!("[core] 已 emit core-ready 事件到前端");
+                                    println!("[core] 已 emit core-ready 事件到前端，距 spawn: {:?}", spawn_start_spawn.elapsed());
                                 }
                             }
                         }
