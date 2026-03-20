@@ -198,6 +198,7 @@ export default defineConfig({
     'zod',
     "pino",
     "pino-pretty",
+    "@fastify/websocket",
   ],
   // 仅保留无法打包或需要运行时文件资源的模块在 node_modules，其余打进 bundle
   external: ["better-sqlite3", "@fastify/swagger", "@fastify/swagger-ui"],
