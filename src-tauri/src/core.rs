@@ -20,6 +20,20 @@ use crate::config;
 /// 侧车 PID 的全局副本，用于 Ctrl+C 时在信号处理里按 PID 终止（Drop 可能来不及执行）。
 static SIDECAR_PID: OnceLock<Mutex<Option<u32>>> = OnceLock::new();
 
+/// macOS: 移除侧车二进制文件的隔离属性，避免 Gatekeeper 首次运行时 10+ 秒延迟
+#[cfg(target_os = "macos")]
+fn remove_sidecar_quarantine(sidecar_path: &std::path::Path) {
+    use std::process::Command;
+    if sidecar_path.exists() {
+        let _ = Command::new("xattr")
+            .args(["-c", sidecar_path.to_str().unwrap_or("")])
+            .output();
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn remove_sidecar_quarantine(_sidecar_path: &std::path::Path) {}
+
 // ---------------------------------------------------------------------------
 // 状态与配置
 // ---------------------------------------------------------------------------
@@ -220,6 +234,17 @@ pub fn start_core_on_setup(app: &AppHandle) -> Result<(), String> {
             return Ok(());
         }
     };
+
+    // macOS: 启动前移除隔离属性，避免 Gatekeeper 延迟
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(exe_dir) = exe.parent() {
+                let sidecar_exe = exe_dir.join("toolbox_node");
+                remove_sidecar_quarantine(&sidecar_exe);
+            }
+        }
+    }
 
     let env_pairs: Vec<_> = env_vars.iter().map(|(k, v)| (k.as_str(), v.as_str())).collect();
     let spawn_start = std::time::Instant::now();

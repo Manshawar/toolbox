@@ -194,7 +194,17 @@ async function main() {
     await fs.promises.copyFile(nodeExePath, sidecarPath);
     console.log(`[init] 已写入侧车: ${sidecarPath}`);
 
-    // 4. Windows：用 rcedit 改 exe 显示名与图标
+    // 4. macOS：移除隔离属性（避免 Gatekeeper 首次运行时的 10+ 秒延迟）
+    if (platformId.startsWith("darwin-")) {
+      try {
+        execSync(`xattr -c "${sidecarPath}"`, { stdio: "ignore" });
+        console.log(`[init] 已移除 macOS 隔离属性`);
+      } catch {
+        // 忽略错误，不影响主流程
+      }
+    }
+
+    // 5. Windows：用 rcedit 改 exe 显示名与图标
     //    - 显示名：任务管理器读 FileDescription，否则会显示「Node.js JavaScript Runtime」
     //    - 图标：使用 src-tauri/icons/toolbox_node.ico（若无则用 icon.ico），任务栏/资源管理器中显示
     //    macOS/Linux：进程名由可执行文件名 toolbox_node-<target> 决定，无需处理
